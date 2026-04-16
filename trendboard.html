@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background-color: #0a0a0a !important;
+  color: #f5f2eb !important;
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color-scheme: dark;
+}
+
+/* ── TICKER ── */
+.ticker-wrap { background:#ff4d1c; padding:5px 0; overflow:hidden; white-space:nowrap; }
+.ticker-inner { display:inline-block; animation:ticker 32s linear infinite; font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.08em; color:#fff; }
+@keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+
+/* ── HEADER ── */
+header { padding:20px 32px 16px; display:flex; align-items:flex-end; justify-content:space-between; border-bottom:1px solid #2a2a28; background:#0a0a0a; }
+.logo { font-size:34px; font-weight:800; letter-spacing:-2px; line-height:1; color:#f5f2eb; }
+.logo span { color:#ff4d1c; }
+.logo-ext { font-size:14px; font-weight:400; color:#7a7570; letter-spacing:0; margin-left:4px; }
+.logo-sub { font-family:'Space Mono',monospace; font-size:9px; color:#9a9590; letter-spacing:0.14em; margin-top:5px; text-transform:uppercase; }
+.header-right { font-family:'Space Mono',monospace; font-size:10px; color:#9a9590; text-align:right; line-height:1.9; }
+.live-dot { display:inline-block; width:6px; height:6px; background:#00c896; border-radius:50%; margin-right:4px; animation:pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.35;transform:scale(0.7)} }
+
+/* ── SUBHEADER ── */
+.subheader { padding:9px 32px; display:flex; align-items:center; gap:18px; border-bottom:1px solid #2a2a28; background:#0a0a0a; font-family:'Space Mono',monospace; font-size:9px; color:#9a9590; letter-spacing:0.09em; text-transform:uppercase; flex-wrap:wrap; }
+.disclaimer-pill { background:#1a1500; border:1px solid #3a3000; color:#ffd700; padding:3px 10px; border-radius:20px; font-size:8px; }
+
+.desktop-view { display:block; }
+.mobile-view { display:none; }
+
+/* ═══════════════════════════════════════════════════════
+   DESKTOP — PURE LIST (default collapsed state)
+   Each row shows: rank | image | name + tags | growth badge | expand hint
+   ═══════════════════════════════════════════════════════ */
+
+/* Column headers for collapsed list */
+.col-headers {
+  display:grid;
+  grid-template-columns: 44px 64px 1fr 80px 120px;
+  gap:14px;
+  padding:8px 32px;
+  background:#0a0a0a;
+  font-family:'Space Mono',monospace; font-size:8px; color:#555550;
+  letter-spacing:0.11em; text-transform:uppercase;
+  border-bottom:1px solid #2a2a28;
+}
+
+/* Product row wrapper */
+.product-row { border-bottom:1px solid #1a1a18; position:relative; background:#0a0a0a; }
+.product-row.sponsored > .row-summary { background:#0d0d0a; }
+.product-row.sponsored::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#ffd700; z-index:2; }
+
+/* ── LEVEL 0: THE SUMMARY ROW (always visible) ── */
+.row-summary {
+  display:grid;
+  grid-template-columns: 44px 64px 1fr 80px 120px;
+  gap:14px;
+  padding:12px 32px;
+  align-items:center;
+  cursor:pointer;
+  transition:background 0.12s;
+  background:inherit;
+  user-select:none;
+}
+.row-summary:hover { background:#111110; }
+.row-summary.l1-open { background:#111110; }
+
+.rank-num { font-family:'Space Mono',monospace; font-size:22px; font-weight:700; text-align:center; line-height:1; color:#ffffff; }
+.rank-move { font-family:'Space Mono',monospace; font-size:8px; text-align:center; margin-top:2px; }
+.up{color:#00c896} .down{color:#ff4d1c} .new-e{color:#ffd700}
+
+/* Product image — compact in list */
+.prod-img { width:56px; height:56px; border-radius:7px; border:1px solid #2a2a28; overflow:hidden; flex-shrink:0; background:#111110; display:flex; align-items:center; justify-content:center; position:relative; }
+.prod-img img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+.img-loader { font-size:22px; }
+
+/* Name block */
+.name-block {}
+.product-name { font-size:15px; font-weight:800; letter-spacing:-0.3px; color:#ffffff; line-height:1.2; }
+.product-category { font-family:'Space Mono',monospace; font-size:8px; color:#7a7570; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+.row-tags { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; }
+.social-tag { font-family:'Space Mono',monospace; font-size:7px; padding:2px 6px; border-radius:3px; }
+.tag-tiktok{background:#2a0a0f;color:#ff5070;border:1px solid #4a1520}
+.tag-ig{background:#1e0a2a;color:#c87aff;border:1px solid #3a1550}
+.tag-google{background:#0a1428;color:#6ab0ff;border:1px solid #152540}
+.sponsored-tag{font-family:'Space Mono',monospace;font-size:7px;padding:2px 6px;border-radius:3px;background:#1a1500;color:#ffd700;border:1px solid #3a3000}
+
+/* Growth badge — always visible in list */
+.growth-badge { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:#00c896; text-align:center; }
+.growth-sub { font-family:'Space Mono',monospace; font-size:7px; color:#555550; text-align:center; margin-top:2px; letter-spacing:0.07em; text-transform:uppercase; }
+
+/* Expand hint */
+.expand-hint { display:flex; align-items:center; justify-content:flex-end; gap:6px; }
+.expand-btn {
+  display:flex; align-items:center; gap:5px;
+  font-family:'Space Mono',monospace; font-size:8px; letter-spacing:0.07em;
+  color:#555550; background:transparent; border:1px solid #2a2a28;
+  padding:5px 10px; border-radius:3px; cursor:pointer;
+  transition:all 0.15s; text-transform:uppercase; white-space:nowrap;
+}
+.expand-btn:hover { border-color:#484844; color:#9a9590; }
+.expand-btn.active { border-color:#ff4d1c; color:#ff7a55; background:#1a0a06; }
+.expand-btn .chevron { transition:transform 0.22s; display:inline-block; font-style:normal; }
+.expand-btn.active .chevron { transform:rotate(180deg); }
+
+/* ── LEVEL 1 PANEL: Trend chart + Why trending ── */
+.l1-panel {
+  max-height:0; overflow:hidden;
+  transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1);
+  background:#0d0d0c;
+  border-top:0px solid transparent;
+}
+.l1-panel.open {
+  max-height:320px;
+  border-top:1px solid #1e1e1c;
+}
+.l1-inner {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px;
+  padding:18px 32px 18px 122px;
+}
+
+/* Chart section */
+.l1-chart-section {}
+.l1-chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.l1-chart-lbl { font-family:'Space Mono',monospace; font-size:7px; color:#7a7570; letter-spacing:0.07em; text-transform:uppercase; }
+.l1-chart-growth { font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:#00c896; }
+.l1-chart-wrap { position:relative; height:100px; }
+.l1-chart-note { font-family:'Space Mono',monospace; font-size:7px; color:#444440; margin-top:5px; }
+
+/* Why section */
+.l1-why-section { display:flex; flex-direction:column; justify-content:center; gap:8px; }
+.l1-why-label { font-family:'Space Mono',monospace; font-size:7px; color:#b0aca6; letter-spacing:0.08em; text-transform:uppercase; }
+.l1-why-text { font-family:'Space Mono',monospace; font-size:10px; color:#ffffff; line-height:1.75; border-left:2px solid #ff4d1c; padding-left:9px; }
+.l1-why-srcs { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.src-chip { font-family:'Space Mono',monospace; font-size:7px; padding:2px 6px; border-radius:2px; }
+.src-tiktok{background:#2a0a0f;color:#ff5070}
+.src-ig{background:#1e0a2a;color:#c87aff}
+.src-google{background:#0a1428;color:#6ab0ff}
+.src-reddit{background:#1e0f00;color:#ff9040}
+
+/* L2 trigger row — appears at bottom of L1 */
+.l2-trigger-row {
+  padding:10px 32px 14px 122px;
+  background:#0d0d0c;
+  display:none;
+  border-top:1px solid #1a1a18;
+}
+.l2-trigger-row.visible { display:block; }
+.l2-btn {
+  font-family:'Space Mono',monospace; font-size:8px; letter-spacing:0.09em;
+  color:#ff7a55; background:#1a0a06; border:1px solid #6b2010;
+  padding:8px 18px; border-radius:3px; cursor:pointer;
+  transition:all 0.15s; text-transform:uppercase; display:inline-flex; align-items:center; gap:6px;
+}
+.l2-btn:hover { background:#2a1008; border-color:#ff4d1c; }
+.l2-btn.open { background:#ff4d1c; border-color:#ff4d1c; color:#fff; }
+.l2-btn .chevron { transition:transform 0.22s; display:inline-block; }
+.l2-btn.open .chevron { transform:rotate(180deg); }
+
+/* ── LEVEL 2 PANEL: Shopping options ── */
+.l2-panel {
+  max-height:0; overflow:hidden;
+  transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1);
+  background:#080808;
+}
+.l2-panel.open { max-height:440px; }
+.l2-inner { padding:16px 32px 20px 122px; }
+.l2-title { font-family:'Space Mono',monospace; font-size:8px; color:#7a7570; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:12px; line-height:1.7; }
+.options-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(185px,1fr)); gap:9px; }
+.option-card { background:#161614; border:1px solid #2a2a28; border-radius:6px; padding:13px; transition:border-color 0.15s; }
+.option-card:hover { border-color:#484844; }
+.option-card.is-sponsored { border-color:#3a3000; background:#0e0d00; }
+.option-card.is-trending { border-color:#003a28; background:#000e0a; }
+.opt-badge { font-family:'Space Mono',monospace; font-size:7px; padding:2px 6px; border-radius:2px; display:inline-block; margin-bottom:7px; }
+.badge-sponsored{background:#1a1500;color:#ffd700}
+.badge-trending{background:#001a12;color:#00c896}
+.badge-popular{background:#0a1428;color:#6ab0ff}
+.opt-name { font-size:13px; font-weight:700; color:#ffffff; line-height:1.3; margin-bottom:2px; }
+.opt-brand { font-family:'Space Mono',monospace; font-size:7px; color:#9a9590; margin-bottom:7px; }
+.opt-price { font-family:'Space Mono',monospace; font-size:14px; font-weight:700; color:#ffffff; }
+.opt-rating { font-family:'Space Mono',monospace; font-size:7px; color:#9a9590; margin-top:2px; }
+.opt-buy { display:block; margin-top:9px; background:#ff4d1c; color:#fff; border:none; padding:7px 12px; font-family:'Space Mono',monospace; font-size:8px; letter-spacing:0.08em; font-weight:700; cursor:pointer; border-radius:2px; text-transform:uppercase; width:100%; text-align:center; text-decoration:none; transition:opacity 0.15s; }
+.opt-buy:hover { opacity:0.82; }
+.l2-disclaimer { font-family:'Space Mono',monospace; font-size:7.5px; color:#555550; margin-top:12px; line-height:1.8; padding-top:10px; border-top:1px solid #1a1a18; }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 700px) {
+  .desktop-view { display:none; }
+  .mobile-view { display:block; }
+  header { padding:14px 16px 12px; }
+  .logo { font-size:26px; }
+  .header-right { display:none; }
+  .subheader { padding:8px 16px; font-size:8px; }
+
+  /* Mobile card */
+  .m-card { border-bottom:1px solid #1a1a18; position:relative; background:#0a0a0a; }
+  .m-card.sponsored > .m-summary { background:#0d0d0a; }
+  .m-card.sponsored::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#ffd700; z-index:2; }
+
+  /* Mobile summary row — always visible */
+  .m-summary {
+    display:flex; align-items:center; gap:12px;
+    padding:12px 16px; cursor:pointer;
+    background:inherit; transition:background 0.12s;
+  }
+  .m-summary:active { background:#111110; }
+  .m-rank-block { min-width:28px; text-align:center; }
+  .m-rank-num { font-family:'Space Mono',monospace; font-size:20px; font-weight:700; color:#ffffff; line-height:1; }
+  .m-rank-move { font-family:'Space Mono',monospace; font-size:8px; margin-top:2px; }
+  .m-img { width:54px; height:54px; border-radius:7px; border:1px solid #2a2a28; overflow:hidden; flex-shrink:0; background:#111110; display:flex; align-items:center; justify-content:center; position:relative; }
+  .m-img img { width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .m-img-loader { font-size:20px; }
+  .m-info { flex:1; min-width:0; }
+  .m-name { font-size:14px; font-weight:800; letter-spacing:-0.3px; color:#ffffff; line-height:1.2; }
+  .m-cat { font-family:'Space Mono',monospace; font-size:7px; color:#7a7570; letter-spacing:0.08em; text-transform:uppercase; margin-top:2px; }
+  .m-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+  .m-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+  .m-growth { font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:#00c896; }
+  .m-chevron { font-family:'Space Mono',monospace; font-size:9px; color:#444440; transition:transform 0.22s; display:inline-block; }
+  .m-summary.l1-open .m-chevron { transform:rotate(180deg); color:#ff7a55; }
+
+  /* Mobile L1 */
+  .m-l1-panel { max-height:0; overflow:hidden; transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1); background:#0d0d0c; }
+  .m-l1-panel.open { max-height:500px; border-top:1px solid #1e1e1c; }
+  .m-l1-inner { padding:14px 16px 0; }
+
+  .m-chart-box { background:#111110; border:1px solid #2a2a28; border-radius:6px; padding:10px; margin-bottom:12px; }
+  .m-chart-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .m-chart-lbl { font-family:'Space Mono',monospace; font-size:7px; color:#7a7570; letter-spacing:0.06em; text-transform:uppercase; }
+  .m-chart-growth { font-family:'Space Mono',monospace; font-size:12px; font-weight:700; color:#00c896; }
+  .m-chart-wrap { position:relative; height:70px; }
+  .m-chart-note { font-family:'Space Mono',monospace; font-size:6.5px; color:#444440; margin-top:4px; }
+
+  .m-why-box { background:#111110; border:1px solid #2a2a28; border-radius:6px; padding:10px; margin-bottom:12px; }
+  .m-why-label { font-family:'Space Mono',monospace; font-size:7px; color:#b0aca6; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:5px; }
+  .m-why-text { font-family:'Space Mono',monospace; font-size:10px; color:#ffffff; line-height:1.7; border-left:2px solid #ff4d1c; padding-left:7px; }
+  .m-why-srcs { display:flex; gap:3px; flex-wrap:wrap; margin-top:6px; }
+
+  /* Mobile L2 trigger */
+  .m-l2-trigger { padding:0 16px 12px; background:#0d0d0c; display:none; }
+  .m-l2-trigger.visible { display:block; }
+  .m-l2-btn { width:100%; font-family:'Space Mono',monospace; font-size:9px; letter-spacing:0.09em; color:#ff7a55; background:#1a0a06; border:1px solid #6b2010; padding:10px 16px; border-radius:3px; cursor:pointer; transition:all 0.15s; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .m-l2-btn.open { background:#ff4d1c; border-color:#ff4d1c; color:#fff; }
+  .m-l2-btn .chevron { transition:transform 0.22s; display:inline-block; }
+  .m-l2-btn.open .chevron { transform:rotate(180deg); }
+
+  /* Mobile L2 */
+  .m-l2-panel { max-height:0; overflow:hidden; transition:max-height 0.38s cubic-bezier(0.4,0,0.2,1); background:#080808; }
+  .m-l2-panel.open { max-height:900px; }
+  .m-l2-inner { padding:14px 16px 18px; }
+  .m-l2-title { font-family:'Space Mono',monospace; font-size:7.5px; color:#7a7570; letter-spacing:0.09em; text-transform:uppercase; margin-bottom:10px; line-height:1.7; }
+  .m-opt { background:#161614; border:1px solid #2a2a28; border-radius:6px; padding:12px; margin-bottom:8px; display:flex; gap:10px; align-items:flex-start; }
+  .m-opt.is-sponsored{border-color:#3a3000;background:#0e0d00}
+  .m-opt.is-trending{border-color:#003a28;background:#000e0a}
+  .m-opt-left { flex:1; }
+  .m-opt-right { display:flex; flex-direction:column; align-items:flex-end; min-width:65px; }
+  .m-opt-price { font-family:'Space Mono',monospace; font-size:14px; font-weight:700; color:#ffffff; }
+  .m-opt-buy { margin-top:8px; background:#ff4d1c; color:#fff; border:none; padding:6px 10px; font-family:'Space Mono',monospace; font-size:7.5px; letter-spacing:0.07em; font-weight:700; cursor:pointer; border-radius:2px; text-transform:uppercase; text-decoration:none; display:inline-block; white-space:nowrap; }
+  .m-l2-disc { font-family:'Space Mono',monospace; font-size:7px; color:#555550; margin-top:10px; line-height:1.8; padding-top:10px; border-top:1px solid #1a1a18; }
+}
+
+/* FOOTER */
+.footer-note { padding:18px 32px 28px; font-family:'Space Mono',monospace; font-size:8.5px; color:#555550; line-height:1.9; border-top:1px solid #2a2a28; background:#0a0a0a; }
+.footer-note strong { color:#9a9590; }
+</style>
+</head>
+<body>
+
+<div class="ticker-wrap">
+  <div class="ticker-inner">
+    #1 MOUTH TAPE +340% ↑ &nbsp;·&nbsp; #2 SAUNA BLANKET +280% ↑ &nbsp;·&nbsp; #3 BLUE LIGHT THERAPY +190% ↑ &nbsp;·&nbsp; #4 FLAT BACK EARRINGS +160% ↑ &nbsp;·&nbsp; #5 IPL REMOVAL +140% ↑ &nbsp;·&nbsp; #6 SLEEP EARBUDS +120% ↑ &nbsp;·&nbsp; #7 GLASS STRAWS +95% ↑ &nbsp;·&nbsp; #8 HAIR REPAIR MASK +88% ↑ &nbsp;·&nbsp; #9 WALKING PAD +76% ↑ &nbsp;·&nbsp; #10 CORDLESS CURLER +64% ↑ &nbsp;·&nbsp;
+    #1 MOUTH TAPE +340% ↑ &nbsp;·&nbsp; #2 SAUNA BLANKET +280% ↑ &nbsp;·&nbsp; #3 BLUE LIGHT THERAPY +190% ↑ &nbsp;·&nbsp; #4 FLAT BACK EARRINGS +160% ↑ &nbsp;·&nbsp; #5 IPL REMOVAL +140% ↑ &nbsp;·&nbsp; #6 SLEEP EARBUDS +120% ↑ &nbsp;·&nbsp; #7 GLASS STRAWS +95% ↑ &nbsp;·&nbsp; #8 HAIR REPAIR MASK +88% ↑ &nbsp;·&nbsp; #9 WALKING PAD +76% ↑ &nbsp;·&nbsp; #10 CORDLESS CURLER +64% ↑ &nbsp;·&nbsp;
+  </div>
+</div>
+
+<header>
+  <div>
+    <div class="logo">TREND<span>BOARD</span><span class="logo-ext">.fyi</span></div>
+    <div class="logo-sub">The Billboard 100 of what people are buying right now</div>
+  </div>
+  <div class="header-right">
+    <div><span class="live-dot"></span>Updated weekly · April 4, 2026</div>
+    <div>Rankings: Google Trends + TikTok + Reddit</div>
+    <div>Chart order is never paid · Sponsored clearly labeled</div>
+  </div>
+</header>
+
+<div class="subheader">
+  <span>🏆 This week · Top 6</span>
+  <div class="disclaimer-pill">★ Sponsored = partner · rank is always real data</div>
+  <span style="margin-left:auto;font-size:8px;color:#444440">Click any row to expand · Click again to collapse</span>
+</div>
+
+<!-- DESKTOP -->
+<div class="desktop-view">
+  <div class="col-headers">
+    <div>Rank</div>
+    <div></div>
+    <div>Product</div>
+    <div>Growth</div>
+    <div></div>
+  </div>
+  <div id="desktop-rows"></div>
+</div>
+
+<!-- MOBILE -->
+<div class="mobile-view">
+  <div id="mobile-cards"></div>
+</div>
+
+<div class="footer-note">
+  <strong>How rankings work:</strong> Chart positions are calculated weekly from Google Trends search velocity, TikTok view momentum, and Reddit discussion growth — never from sales or paid placement. <strong>★ Sponsored products</strong> are brand partners within their earned chart position. Rank is never for sale. · Trendboard may earn a commission on purchases through our links.
+</div>
+
+<script>
+const MONTHS = ["Oct '25","Nov '25","Dec '25","Jan '26","Feb '26","Mar '26","Apr '26"];
+
+const P = [
+  { rank:1, move:'NEW', mc:'new-e', name:'Sleep Mouth Tape', cat:'Sleep & Recovery',
+    tags:[{c:'tag-tiktok',t:'TikTok 890M'},{c:'tag-google',t:'Breakout'}], sponsored:true,
+    emoji:'😴', growth:'+340%',
+    trend:[12,18,22,45,68,88,100],
+    events:[{mi:3,label:'Huberman podcast'},{mi:5,label:'Viral TikTok'}],
+    why:{t:'Andrew Huberman mentioned nasal breathing on his podcast. Went viral within 48hrs.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-google',l:'Google'}]},
+    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'Hostage Tape Pro',br:'Hostage Tape',p:'$34',r:'★★★★★ 4.8 (12k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'SomniTape Strips',br:'SomniTape',p:'$24',r:'★★★★☆ 4.5 (6k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'3M Micropore Tape',br:'3M',p:'$8',r:'★★★★★ 4.9 (80k)',iS:false,iT:true},{b:'badge-popular',bt:'Most Searched',n:'Myotape',br:'Myotape',p:'$19',r:'★★★★☆ 4.6 (22k)',iS:false,iT:false}]
+  },
+  { rank:2, move:'▲ 3', mc:'up', name:'Infrared Sauna Blanket', cat:'Wellness & Recovery',
+    tags:[{c:'tag-tiktok',t:'TikTok 420M'},{c:'tag-ig',t:'IG Trending'}], sponsored:true,
+    emoji:'🧖', growth:'+280%',
+    trend:[20,24,28,42,62,80,95],
+    events:[{mi:2,label:'Celebrity IG post'},{mi:4,label:'Biohacker wave'}],
+    why:{t:'Biohacker & celebrity recovery content on IG. "Sweat without leaving your bed" went viral.',s:[{c:'src-ig',l:'Instagram'},{c:'src-tiktok',l:'TikTok'}]},
+    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'HigherDOSE V3',br:'HigherDOSE',p:'$699',r:'★★★★★ 4.7 (8k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'MiHIGH Blanket',br:'MiHIGH',p:'$499',r:'★★★★☆ 4.4 (4k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'Heat Healer',br:'Heat Healer',p:'$499',r:'★★★★★ 4.8 (5k)',iS:false,iT:true},{b:'badge-popular',bt:'Best Value',n:'SereneLife',br:'SereneLife',p:'$199',r:'★★★★☆ 4.3 (18k)',iS:false,iT:false}]
+  },
+  { rank:3, move:'▲ 1', mc:'up', name:'Blue Light Therapy Device', cat:'Skincare',
+    tags:[{c:'tag-tiktok',t:'TikTok 310M'},{c:'tag-ig',t:'#skincare'}], sponsored:false,
+    emoji:'💡', growth:'+190%',
+    trend:[30,32,38,55,70,82,90],
+    events:[{mi:3,label:'Derm TikTok debunk'},{mi:5,label:'Vogue feature'}],
+    why:{t:'Dermatologist TikTok debunked old skepticism. "Actually works for acne" content exploded.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-ig',l:'Instagram'}]},
+    opts:[{b:'badge-trending',bt:'↑ #1 Searched',n:'Foreo Bear',br:'Foreo',p:'$249',r:'★★★★★ 4.7 (14k)',iS:false,iT:true},{b:'badge-popular',bt:'Most Clicked',n:'CurrentBody LED',br:'CurrentBody',p:'$380',r:'★★★★☆ 4.5 (9k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'LightStim Acne',br:'LightStim',p:'$169',r:'★★★★☆ 4.4 (6k)',iS:false,iT:false}]
+  },
+  { rank:4, move:'▼ 1', mc:'down', name:'Flat Back Earrings', cat:'Jewelry & Accessories',
+    tags:[{c:'tag-ig',t:'136K/mo'},{c:'tag-tiktok',t:'#flatback'}], sponsored:false,
+    emoji:'💎', growth:'+160%',
+    trend:[35,42,50,60,70,78,82],
+    events:[{mi:1,label:'Piercing TikTok boom'},{mi:4,label:'Refinery29 article'}],
+    why:{t:'Piercing boom among Gen Z. "Sleep without removing earrings" content resonated massively.',s:[{c:'src-ig',l:'Instagram'},{c:'src-reddit',l:'Reddit'}]},
+    opts:[{b:'badge-trending',bt:'↑ Most Searched',n:'Mejuri Flat Back',br:'Mejuri',p:'$58',r:'★★★★★ 4.8 (9k)',iS:false,iT:true},{b:'badge-popular',bt:'Best Seller',n:'Maria Tash',br:'Maria Tash',p:'$120',r:'★★★★★ 4.9 (3k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'Blomdahl Medical',br:'Blomdahl',p:'$22',r:'★★★★☆ 4.5 (11k)',iS:false,iT:false}]
+  },
+  { rank:5, move:'▲ 2', mc:'up', name:'At-Home IPL Hair Removal', cat:'Beauty & Grooming',
+    tags:[{c:'tag-tiktok',t:'TikTok viral'},{c:'tag-google',t:'Rising'}], sponsored:true,
+    emoji:'✨', growth:'+140%',
+    trend:[28,32,40,52,62,72,80],
+    events:[{mi:2,label:'Before/after wave'},{mi:5,label:'Summer season'}],
+    why:{t:'Before/after videos dominating beauty TikTok. Salon cost comparisons drove urgency.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-ig',l:'Instagram'}]},
+    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'Braun Silk Expert Pro 5',br:'Braun',p:'$429',r:'★★★★★ 4.7 (25k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'Ulike Air 3',br:'Ulike',p:'$329',r:'★★★★☆ 4.5 (18k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'Philips Lumea',br:'Philips',p:'$379',r:'★★★★★ 4.8 (40k)',iS:false,iT:true}]
+  },
+  { rank:6, move:'NEW', mc:'new-e', name:'Sleep Earbuds', cat:'Sleep & Audio',
+    tags:[{c:'tag-ig',t:'#sleepbetter'},{c:'tag-google',t:'Breakout'}], sponsored:false,
+    emoji:'🎧', growth:'+120%',
+    trend:[10,14,18,28,44,60,76],
+    events:[{mi:4,label:'Sleep content surge'},{mi:5,label:'Wirecutter pick'}],
+    why:{t:"Sleep optimization became 2025's wellness obsession. Flat fit solved a real pain for side-sleepers.",s:[{c:'src-google',l:'Google'},{c:'src-reddit',l:'Reddit'}]},
+    opts:[{b:'badge-trending',bt:'↑ Most Searched',n:'Bose Sleepbuds II',br:'Bose',p:'$249',r:'★★★★☆ 4.4 (12k)',iS:false,iT:true},{b:'badge-popular',bt:'Rising Fast',n:'Kokoon Nightbuds',br:'Kokoon',p:'$299',r:'★★★★☆ 4.3 (3k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'Anker Sleep A10',br:'Anker',p:'$79',r:'★★★★☆ 4.5 (22k)',iS:false,iT:false}]
+  }
+];
+
+// ── CHART ─────────────────────────────────────────────────────────────────────
+const charts = {};
+function mkChart(id, data, events, compact) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(canvas, {
+    type:'line',
+    data:{
+      labels: compact ? ["Oct","Nov","Dec","Jan","Feb","Mar","Apr"] : MONTHS,
+      datasets:[{
+        data, fill:true,
+        borderColor:'#00c896', borderWidth: compact ? 1.8 : 2,
+        backgroundColor:(ctx)=>{
+          const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);
+          g.addColorStop(0,'rgba(0,200,150,0.2)'); g.addColorStop(1,'rgba(0,200,150,0.01)');
+          return g;
+        },
+        pointRadius: compact ? 0 : 3, pointHoverRadius:5,
+        pointBackgroundColor:'#00c896', pointBorderColor:'#0a0a0a', pointBorderWidth:2, tension:0.4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:{duration:500},
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'#161614', borderColor:'#2a2a28', borderWidth:1,
+          titleColor:'#9a9590', bodyColor:'#ffffff',
+          titleFont:{family:"'Space Mono',monospace",size:9},
+          bodyFont:{family:"'Space Mono',monospace",size:11,weight:'bold'},
+          padding:10,
+          callbacks:{
+            title:items=>items[0].label,
+            label:item=>` Search index: ${item.raw} / 100`,
+            afterLabel:item=>{const ev=events.find(e=>e.mi===item.dataIndex); return ev?` ← ${ev.label}`:''}
+          }
+        }
+      },
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},ticks:{color:'#3a3a38',font:{family:"'Space Mono',monospace",size:compact?6:7},maxRotation:0,autoSkip:false},border:{display:false}},
+        y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.04)',drawTicks:false},ticks:{color:'#3a3a38',font:{family:"'Space Mono',monospace",size:compact?6:7},stepSize:compact?50:25,callback:v=>v===0?'':v},border:{display:false}}
+      }
+    },
+    plugins:[{
+      id:'evLines',
+      afterDraw(chart){
+        const {ctx,chartArea:{top,bottom},scales:{x}}=chart;
+        events.forEach(ev=>{
+          const xp=x.getPixelForValue(ev.mi);
+          ctx.save();
+          ctx.setLineDash([4,3]); ctx.strokeStyle='rgba(255,90,40,0.45)'; ctx.lineWidth=1.2;
+          ctx.beginPath(); ctx.moveTo(xp,top); ctx.lineTo(xp,bottom); ctx.stroke();
+          ctx.setLineDash([]); ctx.fillStyle='rgba(255,90,40,0.7)';
+          ctx.font=`${compact?6:7}px 'Space Mono',monospace`; ctx.textAlign='center';
+          ctx.fillText(ev.label, xp, top+(compact?9:11));
+          ctx.restore();
+        });
+      }
+    }]
+  });
+}
+
+// ── IMAGE LOADING ─────────────────────────────────────────────────────────────
+const imgCache = {};
+async function genImage(idx) {
+  if (imgCache[idx]!==undefined) return imgCache[idx];
+  imgCache[idx]=null;
+  try {
+    const prompts = [
+      'Close-up of a person sleeping with a small beige mouth tape strip across closed lips. White pillow, warm bedroom lighting. Photorealistic.',
+      'Person lying wrapped in a silver infrared sauna blanket, eyes closed, warm ambient glow. Wellness lifestyle photo.',
+      'Woman holding a sleek blue LED light therapy device near her cheek, soft blue glow on skin, white background.',
+      'Close-up of a woman ear with a tiny elegant gold flat back stud earring, soft natural lighting.',
+      'Hand holding a sleek white IPL laser hair removal device against smooth skin, minimal white background.',
+      'Person sleeping on their side with tiny wireless sleep earbuds in ear, soft bedroom lighting.'
+    ];
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1024,
+        messages:[{role:'user',content:prompts[idx]}]})
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const ib = d.content?.find(b=>b.type==='image');
+    if (ib?.source?.data) { imgCache[idx]=`data:${ib.source.media_type};base64,${ib.source.data}`; return imgCache[idx]; }
+  } catch(e){}
+  return null;
+}
+async function loadImg(wrapId, idx) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const src = await genImage(idx);
+  if (src) {
+    const img = document.createElement('img');
+    img.src=src; img.alt=P[idx].name;
+    const loader = wrap.querySelector('.img-loader,.m-img-loader');
+    if (loader) loader.style.display='none';
+    wrap.appendChild(img);
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function tgs(arr,pfx=''){return arr.map(t=>`<span class="social-tag ${t.c}">${t.t}</span>`).join('');}
+function scs(arr,pfx=''){return arr.map(s=>`<span class="${pfx}src-chip ${s.c}">${s.l}</span>`).join('');}
+function optCards(opts){return opts.map(o=>`
+  <div class="option-card ${o.iS?'is-sponsored':o.iT?'is-trending':''}">
+    <div class="opt-badge ${o.b}">${o.bt}</div>
+    <div class="opt-name">${o.n}</div>
+    <div class="opt-brand">${o.br}</div>
+    <div class="opt-price">${o.p}</div>
+    <div class="opt-rating">${o.r}</div>
+    <a href="#" class="opt-buy">Buy now →</a>
+  </div>`).join('');}
+
+// ── TOGGLE FUNCTIONS ──────────────────────────────────────────────────────────
+
+// Desktop L1 toggle — clicking row summary opens/closes trend+why panel
+function togL1(i) {
+  const summary  = document.getElementById(`dsum-${i}`);
+  const l1       = document.getElementById(`dl1-${i}`);
+  const l2trig   = document.getElementById(`dl2trig-${i}`);
+  const isOpen   = l1.classList.contains('open');
+
+  // Close all L1s first
+  document.querySelectorAll('.l1-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.row-summary').forEach(s=>s.classList.remove('l1-open'));
+  document.querySelectorAll('.l2-trigger-row').forEach(t=>t.classList.remove('visible'));
+  // Close all L2s too
+  document.querySelectorAll('.l2-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.l2-btn').forEach(b=>b.classList.remove('open'));
+
+  if (!isOpen) {
+    l1.classList.add('open');
+    summary.classList.add('l1-open');
+    l2trig.classList.add('visible');
+    // Render chart after transition
+    setTimeout(()=>mkChart(`dc${i}`, P[i].trend, P[i].events, false), 50);
+  }
+}
+
+// Desktop L2 toggle — shopping options
+function togL2(i) {
+  const btn  = document.getElementById(`dl2btn-${i}`);
+  const panel= document.getElementById(`dl2-${i}`);
+  const isOpen = panel.classList.contains('open');
+  // Close all other L2s
+  document.querySelectorAll('.l2-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.l2-btn').forEach(b=>b.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); btn.classList.add('open'); }
+}
+
+// Mobile L1
+function mTogL1(i) {
+  const summary = document.getElementById(`msum-${i}`);
+  const l1      = document.getElementById(`ml1-${i}`);
+  const l2trig  = document.getElementById(`ml2trig-${i}`);
+  const isOpen  = l1.classList.contains('open');
+
+  document.querySelectorAll('.m-l1-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.m-summary').forEach(s=>s.classList.remove('l1-open'));
+  document.querySelectorAll('.m-l2-trigger').forEach(t=>t.classList.remove('visible'));
+  document.querySelectorAll('.m-l2-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.m-l2-btn').forEach(b=>b.classList.remove('open'));
+
+  if (!isOpen) {
+    l1.classList.add('open');
+    summary.classList.add('l1-open');
+    l2trig.classList.add('visible');
+    setTimeout(()=>mkChart(`mc${i}`, P[i].trend, P[i].events, true), 50);
+  }
+}
+
+// Mobile L2
+function mTogL2(i) {
+  const btn   = document.getElementById(`ml2btn-${i}`);
+  const panel = document.getElementById(`ml2-${i}`);
+  const isOpen= panel.classList.contains('open');
+  document.querySelectorAll('.m-l2-panel').forEach(p=>p.classList.remove('open'));
+  document.querySelectorAll('.m-l2-btn').forEach(b=>b.classList.remove('open'));
+  if (!isOpen) { panel.classList.add('open'); btn.classList.add('open'); }
+}
+
+// ── BUILD DESKTOP ─────────────────────────────────────────────────────────────
+function buildDesktop() {
+  const c = document.getElementById('desktop-rows');
+  P.forEach((p,i) => {
+    const st = p.sponsored ? `<span class="sponsored-tag">★ Sponsored</span>` : '';
+    const el = document.createElement('div');
+    el.className = 'product-row'+(p.sponsored?' sponsored':'');
+    el.innerHTML = `
+      <!-- LEVEL 0: Summary row — always visible -->
+      <div class="row-summary" id="dsum-${i}" onclick="togL1(${i})">
+        <div>
+          <div class="rank-num">${p.rank}</div>
+          <div class="rank-move ${p.mc}">${p.move}</div>
+        </div>
+        <div class="prod-img" id="di${i}"><span class="img-loader">${p.emoji}</span></div>
+        <div class="name-block">
+          <div class="product-name">${p.name}</div>
+          <div class="product-category">${p.cat}</div>
+          <div class="row-tags">${tgs(p.tags)}${st}</div>
+        </div>
+        <div>
+          <div class="growth-badge">${p.growth}</div>
+          <div class="growth-sub">6-month</div>
+        </div>
+        <div class="expand-hint">
+          <button class="expand-btn" onclick="event.stopPropagation();togL1(${i})">
+            Data + Why <span class="chevron">↓</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- LEVEL 1: Trend chart + Why trending -->
+      <div class="l1-panel" id="dl1-${i}">
+        <div class="l1-inner">
+          <div class="l1-chart-section">
+            <div class="l1-chart-header">
+              <span class="l1-chart-lbl">Google Trends · Oct '25 – Apr '26 · index 0–100</span>
+              <span class="l1-chart-growth">${p.growth}</span>
+            </div>
+            <div class="l1-chart-wrap"><canvas id="dc${i}"></canvas></div>
+            <div class="l1-chart-note">Dashed lines = key moments · hover for monthly data</div>
+          </div>
+          <div class="l1-why-section">
+            <div class="l1-why-label">Why it's trending</div>
+            <div class="l1-why-text">${p.why.t}</div>
+            <div class="l1-why-srcs">${scs(p.why.s)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- L2 trigger — sits below L1, only visible when L1 is open -->
+      <div class="l2-trigger-row" id="dl2trig-${i}">
+        <button class="l2-btn" id="dl2btn-${i}" onclick="togL2(${i})">
+          Top Shopping Options <span class="chevron">↓</span>
+        </button>
+      </div>
+
+      <!-- LEVEL 2: Shopping options -->
+      <div class="l2-panel" id="dl2-${i}">
+        <div class="l2-inner">
+          <div class="l2-title">Options for "${p.name}" — ★ sponsored first · ↑ trending organic · then popular</div>
+          <div class="options-grid">${optCards(p.opts)}</div>
+          <div class="l2-disclaimer">★ Sponsored = paid placement. ↑ Trending = highest organic search momentum. Chart rank is always data, never payment.</div>
+        </div>
+      </div>`;
+    c.appendChild(el);
+    loadImg(`di${i}`, i);
+  });
+}
+
+// ── BUILD MOBILE ──────────────────────────────────────────────────────────────
+function buildMobile() {
+  const c = document.getElementById('mobile-cards');
+  P.forEach((p,i) => {
+    const st = p.sponsored ? `<span class="social-tag sponsored-tag">★ Sponsored</span>` : '';
+    const el = document.createElement('div');
+    el.className = 'm-card'+(p.sponsored?' sponsored':'');
+    el.innerHTML = `
+      <!-- Mobile Level 0: summary -->
+      <div class="m-summary" id="msum-${i}" onclick="mTogL1(${i})">
+        <div class="m-rank-block">
+          <div class="m-rank-num">${p.rank}</div>
+          <div class="m-rank-move ${p.mc}">${p.move}</div>
+        </div>
+        <div class="m-img" id="mi${i}"><span class="m-img-loader">${p.emoji}</span></div>
+        <div class="m-info">
+          <div class="m-name">${p.name}</div>
+          <div class="m-cat">${p.cat}</div>
+          <div class="m-tags">${tgs(p.tags)}${st}</div>
+        </div>
+        <div class="m-right">
+          <div class="m-growth">${p.growth}</div>
+          <span class="m-chevron">↓</span>
+        </div>
+      </div>
+
+      <!-- Mobile Level 1: chart + why -->
+      <div class="m-l1-panel" id="ml1-${i}">
+        <div class="m-l1-inner">
+          <div class="m-chart-box">
+            <div class="m-chart-top">
+              <span class="m-chart-lbl">Google Trends · Oct '25 – Apr '26</span>
+              <span class="m-chart-growth">${p.growth}</span>
+            </div>
+            <div class="m-chart-wrap"><canvas id="mc${i}"></canvas></div>
+            <div class="m-chart-note">Dashed lines = key moments · tap for monthly data</div>
+          </div>
+          <div class="m-why-box">
+            <div class="m-why-label">Why it's trending</div>
+            <div class="m-why-text">${p.why.t}</div>
+            <div class="m-why-srcs">${scs(p.why.s,'m-')}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile L2 trigger -->
+      <div class="m-l2-trigger" id="ml2trig-${i}">
+        <button class="m-l2-btn" id="ml2btn-${i}" onclick="mTogL2(${i})">
+          Top Shopping Options <span class="chevron">↓</span>
+        </button>
+      </div>
+
+      <!-- Mobile Level 2: shopping -->
+      <div class="m-l2-panel" id="ml2-${i}">
+        <div class="m-l2-inner">
+          <div class="m-l2-title">Options for "${p.name}" — ★ sponsored first · ↑ trending · then popular</div>
+          ${p.opts.map(o=>`
+            <div class="m-opt ${o.iS?'is-sponsored':o.iT?'is-trending':''}">
+              <div class="m-opt-left">
+                <div class="opt-badge ${o.b}">${o.bt}</div>
+                <div style="font-size:13px;font-weight:700;color:#ffffff;margin-bottom:2px">${o.n}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:7px;color:#9a9590;margin-bottom:4px">${o.br}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:7px;color:#9a9590">${o.r}</div>
+              </div>
+              <div class="m-opt-right">
+                <div class="m-opt-price">${o.p}</div>
+                <a href="#" class="m-opt-buy">Buy →</a>
+              </div>
+            </div>`).join('')}
+          <div class="m-l2-disc">★ Sponsored = paid placement. ↑ Trending = highest organic momentum. Chart rank is always data, never payment.</div>
+        </div>
+      </div>`;
+    c.appendChild(el);
+    loadImg(`mi${i}`, i);
+  });
+}
+
+buildDesktop();
+buildMobile();
+</script>
+</body>
+</html>
