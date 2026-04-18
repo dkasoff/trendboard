@@ -345,6 +345,7 @@ async function loadBillboard() {
       }
     );
     const json = await res.json();
+   
     const ranked = json[0].data.ranked_scores;
 
     P = ranked.map(s => ({
@@ -356,7 +357,7 @@ async function loadBillboard() {
       tags:      platformTags(s.platforms_present),
       sponsored: false,
       emoji:     productEmoji(s.product_name),
-      growth:    `+${Math.round(s.velocity_score)}%`,
+      growth:    s.final_ts > 0 ? `+${Math.round(s.velocity_score)}%` : '—',
       trend:     [30,35,40,50,60,70,Math.round(s.final_ts)],
       events:    [],
       why:       { t: `Trending across ${s.platforms_present.length} platforms with strong search momentum.`, s: platformSources(s.platforms_present) },
