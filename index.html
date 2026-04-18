@@ -327,58 +327,81 @@ header { padding:20px 32px 16px; display:flex; align-items:flex-end; justify-con
 </div>
 
 <script>
+  const SUPABASE_URL = 'https://aznmqijeslcslajpyncb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6bm1xaWplc2xjc2xhanB5bmNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNDcyMjgsImV4cCI6MjA5MTkyMzIyOH0.E_ACcfogeLKbWhuffneTmfUqlZ3q-6m7wfzV7K__nCw';
 const MONTHS = ["Oct '25","Nov '25","Dec '25","Jan '26","Feb '26","Mar '26","Apr '26"];
 
-const P = [
-  { rank:1, move:'NEW', mc:'new-e', name:'Sleep Mouth Tape', cat:'Sleep & Recovery',
-    tags:[{c:'tag-tiktok',t:'TikTok 890M'},{c:'tag-google',t:'Breakout'}], sponsored:true,
-    emoji:'😴', growth:'+340%',
-    trend:[12,18,22,45,68,88,100],
-    events:[{mi:3,label:'Huberman podcast'},{mi:5,label:'Viral TikTok'}],
-    why:{t:'Andrew Huberman mentioned nasal breathing on his podcast. Went viral within 48hrs.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-google',l:'Google'}]},
-    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'Hostage Tape Pro',br:'Hostage Tape',p:'$34',r:'★★★★★ 4.8 (12k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'SomniTape Strips',br:'SomniTape',p:'$24',r:'★★★★☆ 4.5 (6k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'3M Micropore Tape',br:'3M',p:'$8',r:'★★★★★ 4.9 (80k)',iS:false,iT:true},{b:'badge-popular',bt:'Most Searched',n:'Myotape',br:'Myotape',p:'$19',r:'★★★★☆ 4.6 (22k)',iS:false,iT:false}]
-  },
-  { rank:2, move:'▲ 3', mc:'up', name:'Infrared Sauna Blanket', cat:'Wellness & Recovery',
-    tags:[{c:'tag-tiktok',t:'TikTok 420M'},{c:'tag-ig',t:'IG Trending'}], sponsored:true,
-    emoji:'🧖', growth:'+280%',
-    trend:[20,24,28,42,62,80,95],
-    events:[{mi:2,label:'Celebrity IG post'},{mi:4,label:'Biohacker wave'}],
-    why:{t:'Biohacker & celebrity recovery content on IG. "Sweat without leaving your bed" went viral.',s:[{c:'src-ig',l:'Instagram'},{c:'src-tiktok',l:'TikTok'}]},
-    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'HigherDOSE V3',br:'HigherDOSE',p:'$699',r:'★★★★★ 4.7 (8k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'MiHIGH Blanket',br:'MiHIGH',p:'$499',r:'★★★★☆ 4.4 (4k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'Heat Healer',br:'Heat Healer',p:'$499',r:'★★★★★ 4.8 (5k)',iS:false,iT:true},{b:'badge-popular',bt:'Best Value',n:'SereneLife',br:'SereneLife',p:'$199',r:'★★★★☆ 4.3 (18k)',iS:false,iT:false}]
-  },
-  { rank:3, move:'▲ 1', mc:'up', name:'Blue Light Therapy Device', cat:'Skincare',
-    tags:[{c:'tag-tiktok',t:'TikTok 310M'},{c:'tag-ig',t:'#skincare'}], sponsored:false,
-    emoji:'💡', growth:'+190%',
-    trend:[30,32,38,55,70,82,90],
-    events:[{mi:3,label:'Derm TikTok debunk'},{mi:5,label:'Vogue feature'}],
-    why:{t:'Dermatologist TikTok debunked old skepticism. "Actually works for acne" content exploded.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-ig',l:'Instagram'}]},
-    opts:[{b:'badge-trending',bt:'↑ #1 Searched',n:'Foreo Bear',br:'Foreo',p:'$249',r:'★★★★★ 4.7 (14k)',iS:false,iT:true},{b:'badge-popular',bt:'Most Clicked',n:'CurrentBody LED',br:'CurrentBody',p:'$380',r:'★★★★☆ 4.5 (9k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'LightStim Acne',br:'LightStim',p:'$169',r:'★★★★☆ 4.4 (6k)',iS:false,iT:false}]
-  },
-  { rank:4, move:'▼ 1', mc:'down', name:'Flat Back Earrings', cat:'Jewelry & Accessories',
-    tags:[{c:'tag-ig',t:'136K/mo'},{c:'tag-tiktok',t:'#flatback'}], sponsored:false,
-    emoji:'💎', growth:'+160%',
-    trend:[35,42,50,60,70,78,82],
-    events:[{mi:1,label:'Piercing TikTok boom'},{mi:4,label:'Refinery29 article'}],
-    why:{t:'Piercing boom among Gen Z. "Sleep without removing earrings" content resonated massively.',s:[{c:'src-ig',l:'Instagram'},{c:'src-reddit',l:'Reddit'}]},
-    opts:[{b:'badge-trending',bt:'↑ Most Searched',n:'Mejuri Flat Back',br:'Mejuri',p:'$58',r:'★★★★★ 4.8 (9k)',iS:false,iT:true},{b:'badge-popular',bt:'Best Seller',n:'Maria Tash',br:'Maria Tash',p:'$120',r:'★★★★★ 4.9 (3k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'Blomdahl Medical',br:'Blomdahl',p:'$22',r:'★★★★☆ 4.5 (11k)',iS:false,iT:false}]
-  },
-  { rank:5, move:'▲ 2', mc:'up', name:'At-Home IPL Hair Removal', cat:'Beauty & Grooming',
-    tags:[{c:'tag-tiktok',t:'TikTok viral'},{c:'tag-google',t:'Rising'}], sponsored:true,
-    emoji:'✨', growth:'+140%',
-    trend:[28,32,40,52,62,72,80],
-    events:[{mi:2,label:'Before/after wave'},{mi:5,label:'Summer season'}],
-    why:{t:'Before/after videos dominating beauty TikTok. Salon cost comparisons drove urgency.',s:[{c:'src-tiktok',l:'TikTok'},{c:'src-ig',l:'Instagram'}]},
-    opts:[{b:'badge-sponsored',bt:'★ Sponsored',n:'Braun Silk Expert Pro 5',br:'Braun',p:'$429',r:'★★★★★ 4.7 (25k)',iS:true,iT:false},{b:'badge-sponsored',bt:'★ Sponsored',n:'Ulike Air 3',br:'Ulike',p:'$329',r:'★★★★☆ 4.5 (18k)',iS:true,iT:false},{b:'badge-trending',bt:'↑ Trending',n:'Philips Lumea',br:'Philips',p:'$379',r:'★★★★★ 4.8 (40k)',iS:false,iT:true}]
-  },
-  { rank:6, move:'NEW', mc:'new-e', name:'Sleep Earbuds', cat:'Sleep & Audio',
-    tags:[{c:'tag-ig',t:'#sleepbetter'},{c:'tag-google',t:'Breakout'}], sponsored:false,
-    emoji:'🎧', growth:'+120%',
-    trend:[10,14,18,28,44,60,76],
-    events:[{mi:4,label:'Sleep content surge'},{mi:5,label:'Wirecutter pick'}],
-    why:{t:"Sleep optimization became 2025's wellness obsession. Flat fit solved a real pain for side-sleepers.",s:[{c:'src-google',l:'Google'},{c:'src-reddit',l:'Reddit'}]},
-    opts:[{b:'badge-trending',bt:'↑ Most Searched',n:'Bose Sleepbuds II',br:'Bose',p:'$249',r:'★★★★☆ 4.4 (12k)',iS:false,iT:true},{b:'badge-popular',bt:'Rising Fast',n:'Kokoon Nightbuds',br:'Kokoon',p:'$299',r:'★★★★☆ 4.3 (3k)',iS:false,iT:false},{b:'badge-popular',bt:'Best Value',n:'Anker Sleep A10',br:'Anker',p:'$79',r:'★★★★☆ 4.5 (22k)',iS:false,iT:false}]
+let P = [];
+
+async function loadBillboard() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/billboard?select=data&order=run_date.desc&limit=1`,
+      {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`
+        }
+      }
+    );
+    const json = await res.json();
+    const ranked = json[0].data.ranked_scores;
+
+    P = ranked.map(s => ({
+      rank:      s.rank,
+      move:      s.state === 'NEW_ENTRY' ? 'NEW' : '—',
+      mc:        s.state === 'NEW_ENTRY' ? 'new-e' : '',
+      name:      s.product_name,
+      cat:       s.category,
+      tags:      platformTags(s.platforms_present),
+      sponsored: false,
+      emoji:     productEmoji(s.product_name),
+      growth:    `+${Math.round(s.velocity_score)}%`,
+      trend:     [30,35,40,50,60,70,Math.round(s.final_ts)],
+      events:    [],
+      why:       { t: `Trending across ${s.platforms_present.length} platforms with strong search momentum.`, s: platformSources(s.platforms_present) },
+      opts:      []
+    }));
+
+    buildDesktop();
+    buildMobile();
+
+  } catch(e) {
+    console.error('Failed to load billboard:', e);
   }
-];
+}
+
+function platformTags(platforms) {
+  const map = {
+    tiktok:    { c:'tag-tiktok', t:'TikTok' },
+    instagram: { c:'tag-ig',     t:'Instagram' },
+    google:    { c:'tag-google', t:'Google' },
+    reddit:    { c:'tag-reddit', t:'Reddit' }
+  };
+  return platforms.map(p => map[p]).filter(Boolean);
+}
+
+function platformSources(platforms) {
+  const map = {
+    tiktok:    { c:'src-tiktok', l:'TikTok' },
+    instagram: { c:'src-ig',     l:'Instagram' },
+    google:    { c:'src-google', l:'Google' },
+    reddit:    { c:'src-reddit', l:'Reddit' }
+  };
+  return platforms.map(p => map[p]).filter(Boolean);
+}
+
+function productEmoji(name) {
+  const map = {
+    'Sleep Mouth Tape':         '😴',
+    'Infrared Sauna Blanket':   '🧖',
+    'Blue Light Therapy':       '💡',
+    'Flat Back Earrings':       '💎',
+    'At-Home IPL Hair Removal': '✨',
+    'Sleep Earbuds':            '🎧',
+  };
+  return map[name] || '📦';
+}
 
 // ── CHART ─────────────────────────────────────────────────────────────────────
 const charts = {};
@@ -711,8 +734,7 @@ function buildMobile() {
   });
 }
 
-buildDesktop();
-buildMobile();
+loadBillboard();
 </script>
 </body>
 </html>
