@@ -107,11 +107,13 @@ def _google_image_search(query: str, fallback_query: str = "") -> str:
 
             items = data.get("items", [])
             if items:
-                # Prefer HTTPS, prefer known reliable domains
+                # Prefer HTTPS sources; proxy through wsrv.nl for reliable CORS
                 for item in items:
                     link = item.get("link", "")
                     if link.startswith("https://"):
-                        return link
+                        # Proxy through wsrv.nl so the frontend never hits CORS issues
+                        encoded = urllib.parse.quote(link.replace("https://", ""), safe="")
+                        return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
                 return items[0].get("link", "")
 
         except urllib.error.HTTPError as e:

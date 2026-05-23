@@ -277,18 +277,20 @@ const MOCK={run_date:"2026-05-10",ranked_scores:[
 {rank:10,product_id:"currentbody_led",product_name:"CurrentBody LED Face Mask",brand:"currentbody",product_type_id:"led_device",product_type_label:"LED & Light Therapy",product_type_emoji:"\u{1F4A1}",final_ts:70.4,velocity_score:76,density_score:68,sentiment_score:74,conversion_score:65,state:"NEW_ENTRY",why_trending:"Victoria Beckham posted wearing it — luxury skincare tech hit mainstream overnight",unique_creators:104,sponsored_count:42,organic_count:62,attribution:{spark_handle:"",spark_label:"Celebrity post",spark_followers:32000000,spark_likes:1200000,days_since_spark:4,creators_after_spark:88,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.60,has_derm:false}}
 ]};
 
-// Mock product images (Amazon CDN — reliable public URLs for well-known SKUs)
+// Product images — proxied through wsrv.nl to bypass Amazon hotlink protection
+// wsrv.nl is a free image CDN that handles CORS cleanly
+function imgProxy(asin){return`https://wsrv.nl/?url=m.media-amazon.com/images/I/${asin}._SL300_.jpg&w=300&h=300&fit=cover&output=webp`;}
 const MOCK_IMAGES={
-  anua_toner:      "https://m.media-amazon.com/images/I/71Xm4bfNBhL._SL500_.jpg",
-  cosrx_snail:     "https://m.media-amazon.com/images/I/71yMXTNcGqL._SL500_.jpg",
-  boj_spf:         "https://m.media-amazon.com/images/I/71G8JqFWMqL._SL500_.jpg",
-  paulas_bha:      "https://m.media-amazon.com/images/I/71Z7d4Og5bL._SL500_.jpg",
-  nuface:          "https://m.media-amazon.com/images/I/61oP4Hs3T5L._SL500_.jpg",
-  mighty_patch:    "https://m.media-amazon.com/images/I/71QZRQ8XSNL._SL500_.jpg",
-  laneige_lip:     "https://m.media-amazon.com/images/I/71EHnBNFSLL._SL500_.jpg",
-  solawave:        "https://m.media-amazon.com/images/I/61rrMVxHQgL._SL500_.jpg",
-  cerave_cream:    "https://m.media-amazon.com/images/I/61S7BrCBj7L._SL500_.jpg",
-  currentbody_led: "https://m.media-amazon.com/images/I/41-Pq9VFPoL._SL500_.jpg",
+  anua_toner:      imgProxy("71Xm4bfNBhL"),
+  cosrx_snail:     imgProxy("71yMXTNcGqL"),
+  boj_spf:         imgProxy("71G8JqFWMqL"),
+  paulas_bha:      imgProxy("71Z7d4Og5bL"),
+  nuface:          imgProxy("61oP4Hs3T5L"),
+  mighty_patch:    imgProxy("71QZRQ8XSNL"),
+  laneige_lip:     imgProxy("71EHnBNFSLL"),
+  solawave:        imgProxy("61rrMVxHQgL"),
+  cerave_cream:    imgProxy("61S7BrCBj7L"),
+  currentbody_led: imgProxy("41-Pq9VFPoL"),
 };
 // Merge image URLs into mock data
 MOCK.ranked_scores.forEach(p=>{ if(!p.image_url && MOCK_IMAGES[p.product_id]) p.image_url=MOCK_IMAGES[p.product_id]; });
@@ -436,7 +438,7 @@ function renderDesktop(products){
     el.innerHTML=`
       <div class="row-summary" id="dsum-${i}" onclick="togL1(${i})">
         <div><div class="rank-num">#${p.rank}</div><div class="rank-move ${m.c}">${m.t}</div></div>
-        <div class="prod-img">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='${p.product_type_emoji||'✨'}'">`:p.product_type_emoji||'✨'}</div>
+        <div class="prod-img" data-emoji="${p.product_type_emoji||'✨'}">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onload="this.style.opacity=1" onerror="const el=this.parentElement;el.innerHTML=el.dataset.emoji" style="opacity:0;transition:opacity .3s">`:p.product_type_emoji||'✨'}</div>
         <div class="name-block">
           <div class="product-name">${p.product_name}</div>
           <div class="product-type-line">
@@ -507,7 +509,7 @@ function renderMobile(products){
     el.innerHTML=`
       <div class="m-summary" id="msum-${i}" onclick="mTogL1(${i})">
         <div><div class="m-rank-num">#${p.rank}</div><div class="m-rank-move ${m.c}">${m.t}</div></div>
-        <div class="m-img">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='${p.product_type_emoji||'✨'}'">`:p.product_type_emoji||'✨'}</div>
+        <div class="m-img" data-emoji="${p.product_type_emoji||'✨'}">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onload="this.style.opacity=1" onerror="const el=this.parentElement;el.innerHTML=el.dataset.emoji" style="opacity:0;transition:opacity .3s">`:p.product_type_emoji||'✨'}</div>
         <div class="m-info">
           <div class="m-name">${p.product_name}</div>
           <div class="m-type">${p.product_type_label||''}</div>
