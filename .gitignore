@@ -2,3 +2,12 @@
 __pycache__/
 *.pyc
 .DS_Store
+files/
+files.zip
+index_backup.html
+pipeline_log.txt
+*.log
+
+# Keep skincare_billboard.json tracked (it's the live data file for the site)
+# Keep all .py files tracked (pipeline source)
+

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "skincare_billboard.json", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/skincare_billboard.json", "dest": "/skincare_billboard.json" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
