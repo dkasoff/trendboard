@@ -292,8 +292,24 @@ const MOCK_IMAGES={
   cerave_cream:    imgProxy("61S7BrCBj7L"),
   currentbody_led: imgProxy("41-Pq9VFPoL"),
 };
-// Merge image URLs into mock data
-MOCK.ranked_scores.forEach(p=>{ if(!p.image_url && MOCK_IMAGES[p.product_id]) p.image_url=MOCK_IMAGES[p.product_id]; });
+// Mock buy links — resolved per brand logic
+const MOCK_BUY={
+  anua_toner:      {buy_url:"https://www.amazon.com/s?k=Anua+Heartleaf+Toner&tag=trendboard05-20",        buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  cosrx_snail:     {buy_url:"https://www.amazon.com/s?k=COSRX+Snail+Mucin+Serum&tag=trendboard05-20",    buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  boj_spf:         {buy_url:"https://www.amazon.com/s?k=Beauty+of+Joseon+Relief+Sun&tag=trendboard05-20",buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  paulas_bha:      {buy_url:"https://www.paulaschoice.com/skin-perfecting-2pct-bha-liquid-exfoliant/201.html", buy_source:"brand", buy_label:"Shop on paulaschoice.com"},
+  nuface:          {buy_url:"https://www.mynuface.com/products/nuface-trinity-facial-toning-device",     buy_source:"brand",   buy_label:"Shop on mynuface.com"},
+  mighty_patch:    {buy_url:"https://www.amazon.com/s?k=Mighty+Patch+Original&tag=trendboard05-20",      buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  laneige_lip:     {buy_url:"https://www.amazon.com/s?k=Laneige+Lip+Sleeping+Mask&tag=trendboard05-20",  buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  solawave:        {buy_url:"https://solawave.co/products/radiant-renewal-skincare-wand",                buy_source:"brand",   buy_label:"Shop on solawave.co"},
+  cerave_cream:    {buy_url:"https://www.amazon.com/s?k=CeraVe+Moisturizing+Cream&tag=trendboard05-20",  buy_source:"amazon",  buy_label:"Shop on Amazon"},
+  currentbody_led: {buy_url:"https://www.currentbody.com/products/currentbody-skin-led-light-therapy-face-mask", buy_source:"brand", buy_label:"Shop on currentbody.com"},
+};
+// Merge image + buy link data into mock products
+MOCK.ranked_scores.forEach(p=>{
+  if(!p.image_url && MOCK_IMAGES[p.product_id])   p.image_url=MOCK_IMAGES[p.product_id];
+  if(!p.buy_url   && MOCK_BUY[p.product_id])      Object.assign(p, MOCK_BUY[p.product_id]);
+});
 
 const STATE_LABELS={HIGH_FLYER:"\u{1F680} High Flyer",NEW_ENTRY:"\u{1F195} New Entry",TRENDING:"\u{1F4C8} Trending",COOLING:"\u{1F321}️ Cooling",FALLING_STAR:"⚠️ Falling",STAPLE:"\u{1F4CA} Staple"};
 let PRODUCTS=[], ACTIVE_TYPE='all';
@@ -363,6 +379,15 @@ function tags(p){
   if(p.attribution&&p.attribution.organic_ratio>=0.85)t.push(`<span class="social-tag tag-ig">Organic</span>`);
   if((p.sponsored_count||0)>(p.organic_count||0))t.push(`<span class="sponsored-tag">★ Sponsored</span>`);
   return t.join('');
+}
+
+// Buy button — renders correct label, icon, and href per product
+const SOURCE_ICONS={amazon:"🛒", brand:"🔗", sephora:"🖤", ulta:"💄"};
+function buyBtn(p, cls){
+  const url   = p.buy_url   || `https://www.amazon.com/s?k=${encodeURIComponent((p.brand||'')+' '+(p.product_name||''))}&tag=trendboard05-20`;
+  const label = p.buy_label || "Shop on Amazon";
+  const icon  = SOURCE_ICONS[p.buy_source||'amazon']||'🛒';
+  return `<a href="${url}" target="_blank" rel="noopener" class="${cls}">${icon} ${label}</a>`;
 }
 
 function mv(p){
@@ -488,8 +513,8 @@ function renderDesktop(products){
             <div class="opt-name">${p.product_name}</div>
             <div class="opt-brand">${(p.brand||'').toUpperCase()}</div>
             <div class="opt-price">&mdash;</div>
-            <div class="opt-rating">Affiliate links coming at launch</div>
-            <a href="#" class="opt-buy">Shop Now &rarr;</a>
+            <div class="opt-rating" style="font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin:6px 0">↑ Highest organic search momentum</div>
+            ${buyBtn(p,'opt-buy')}
           </div>
         </div>
         <div class="l2-disclaimer">★ Sponsored = paid placement &middot; ↑ Trending = highest organic search momentum &middot; Rank is always data, never payment.</div>
@@ -540,7 +565,7 @@ function renderMobile(products){
             <div style="font-size:12px;font-weight:700;color:#2C2420;margin-bottom:2px">${p.product_name}</div>
             <div style="font-family:'Space Mono',monospace;font-size:7px;color:#7A7068">${(p.brand||'').toUpperCase()}</div>
           </div>
-          <div class="m-opt-right"><a href="#" class="m-opt-buy">Shop →</a></div>
+          <div class="m-opt-right">${buyBtn(p,'m-opt-buy')}</div>
         </div>
         <div style="font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-top:8px">★ Rank is always data, never payment.</div>
       </div>`;

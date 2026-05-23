@@ -38,6 +38,7 @@ from discovery   import DiscoveryScraper
 from extractor   import ProductExtractor, ProductCandidate
 from attribution    import build_attribution, generate_story
 from image_fetcher  import enrich_products_with_images
+from buy_links      import enrich_products_with_buy_links
 from scorer import (
     GoogleSignal, TikTokSignal, InstagramSignal, RedditSignal,
     ProductSignals, run_weekly_scoring
@@ -277,6 +278,9 @@ def _build_billboard_json(ranked_scores, descriptions, candidates, run_date,
             "product_type_label": c.product_type_label if c else "",
             "product_type_emoji": c.product_type_emoji if c else "",
             "image_url":         image_map.get(score.product_id, {}).get("image_url", ""),
+            "buy_url":           image_map.get(score.product_id, {}).get("buy_url", ""),
+            "buy_source":        image_map.get(score.product_id, {}).get("buy_source", "amazon"),
+            "buy_label":         image_map.get(score.product_id, {}).get("buy_label", "Shop on Amazon"),
             # Attribution data for UI
             "attribution": {
                 "spark_handle":    attr.spark_handle if attr else "",
@@ -397,6 +401,10 @@ def run():
             "image_url":         "",
         }
     enrich_products_with_images(list(_image_map.values()))
+
+    # ── STEP 5c: Resolve buy links ────────────────────────────────────────────
+    logger.info("\n[5c/7] Resolving buy links...")
+    enrich_products_with_buy_links(list(_image_map.values()))
 
     # ── STEP 7: Write to Supabase ─────────────────────────────────────────────
     logger.info("\n[6/7] Writing to database...")
