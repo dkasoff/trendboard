@@ -60,7 +60,8 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 .rank-num{font-size:22px;font-weight:800;color:#2C2420;letter-spacing:-1px;line-height:1}
 .rank-move{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.04em;margin-top:3px}
 .up{color:#7C9A7E}.down{color:#C4897B}.new-e{color:#A89AB0}.flat{color:#B0A898}
-.prod-img{width:44px;height:44px;border-radius:12px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:22px}
+.prod-img{width:44px;height:44px;border-radius:12px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0}
+.prod-img img{width:100%;height:100%;object-fit:cover;border-radius:12px}
 .name-block{padding:0 16px}
 .product-name{font-size:15px;font-weight:700;color:#2C2420;line-height:1.2}
 .product-type-line{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
@@ -177,7 +178,8 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 .m-summary{display:grid;grid-template-columns:50px 44px 1fr auto;padding:14px 16px;align-items:center;cursor:pointer}
 .m-rank-num{font-size:20px;font-weight:800;color:#2C2420;letter-spacing:-1px}
 .m-rank-move{font-family:'Space Mono',monospace;font-size:8px;margin-top:2px}
-.m-img{width:38px;height:38px;border-radius:10px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:18px}
+.m-img{width:38px;height:38px;border-radius:10px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0}
+.m-img img{width:100%;height:100%;object-fit:cover;border-radius:10px}
 .m-info{padding:0 10px}
 .m-name{font-size:13px;font-weight:700;color:#2C2420;line-height:1.2}
 .m-type{font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-top:3px}
@@ -274,6 +276,22 @@ const MOCK={run_date:"2026-05-10",ranked_scores:[
 {rank:9,product_id:"cerave_cream",product_name:"CeraVe Moisturizing Cream",brand:"cerave",product_type_id:"moisturizer",product_type_label:"Moisturizer",product_type_emoji:"\u{1F9F4}",final_ts:72.1,velocity_score:62,density_score:76,sentiment_score:80,conversion_score:72,state:"STAPLE",why_trending:"Dermatologist consensus built over 3 years; it never needs another viral moment",unique_creators:118,sponsored_count:10,organic_count:108,attribution:{spark_handle:"dermdoctor",spark_label:"Collective derm endorsement",spark_followers:0,spark_likes:0,days_since_spark:30,creators_after_spark:90,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.92,has_derm:true}},
 {rank:10,product_id:"currentbody_led",product_name:"CurrentBody LED Face Mask",brand:"currentbody",product_type_id:"led_device",product_type_label:"LED & Light Therapy",product_type_emoji:"\u{1F4A1}",final_ts:70.4,velocity_score:76,density_score:68,sentiment_score:74,conversion_score:65,state:"NEW_ENTRY",why_trending:"Victoria Beckham posted wearing it — luxury skincare tech hit mainstream overnight",unique_creators:104,sponsored_count:42,organic_count:62,attribution:{spark_handle:"",spark_label:"Celebrity post",spark_followers:32000000,spark_likes:1200000,days_since_spark:4,creators_after_spark:88,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.60,has_derm:false}}
 ]};
+
+// Mock product images (Amazon CDN — reliable public URLs for well-known SKUs)
+const MOCK_IMAGES={
+  anua_toner:      "https://m.media-amazon.com/images/I/71Xm4bfNBhL._SL500_.jpg",
+  cosrx_snail:     "https://m.media-amazon.com/images/I/71yMXTNcGqL._SL500_.jpg",
+  boj_spf:         "https://m.media-amazon.com/images/I/71G8JqFWMqL._SL500_.jpg",
+  paulas_bha:      "https://m.media-amazon.com/images/I/71Z7d4Og5bL._SL500_.jpg",
+  nuface:          "https://m.media-amazon.com/images/I/61oP4Hs3T5L._SL500_.jpg",
+  mighty_patch:    "https://m.media-amazon.com/images/I/71QZRQ8XSNL._SL500_.jpg",
+  laneige_lip:     "https://m.media-amazon.com/images/I/71EHnBNFSLL._SL500_.jpg",
+  solawave:        "https://m.media-amazon.com/images/I/61rrMVxHQgL._SL500_.jpg",
+  cerave_cream:    "https://m.media-amazon.com/images/I/61S7BrCBj7L._SL500_.jpg",
+  currentbody_led: "https://m.media-amazon.com/images/I/41-Pq9VFPoL._SL500_.jpg",
+};
+// Merge image URLs into mock data
+MOCK.ranked_scores.forEach(p=>{ if(!p.image_url && MOCK_IMAGES[p.product_id]) p.image_url=MOCK_IMAGES[p.product_id]; });
 
 const STATE_LABELS={HIGH_FLYER:"\u{1F680} High Flyer",NEW_ENTRY:"\u{1F195} New Entry",TRENDING:"\u{1F4C8} Trending",COOLING:"\u{1F321}️ Cooling",FALLING_STAR:"⚠️ Falling",STAPLE:"\u{1F4CA} Staple"};
 let PRODUCTS=[], ACTIVE_TYPE='all';
@@ -418,7 +436,7 @@ function renderDesktop(products){
     el.innerHTML=`
       <div class="row-summary" id="dsum-${i}" onclick="togL1(${i})">
         <div><div class="rank-num">#${p.rank}</div><div class="rank-move ${m.c}">${m.t}</div></div>
-        <div class="prod-img">${p.product_type_emoji||'✨'}</div>
+        <div class="prod-img">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='${p.product_type_emoji||'✨'}'">`:p.product_type_emoji||'✨'}</div>
         <div class="name-block">
           <div class="product-name">${p.product_name}</div>
           <div class="product-type-line">
@@ -464,6 +482,7 @@ function renderDesktop(products){
         <div class="options-grid">
           <div class="option-card is-trending">
             <div class="opt-badge badge-trending">↑ #1 Searched</div>
+            ${p.image_url?`<div style="width:100%;height:140px;border-radius:10px;overflow:hidden;margin:10px 0"><img src="${p.image_url}" alt="${p.product_name}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>`:''}
             <div class="opt-name">${p.product_name}</div>
             <div class="opt-brand">${(p.brand||'').toUpperCase()}</div>
             <div class="opt-price">&mdash;</div>
@@ -488,7 +507,7 @@ function renderMobile(products){
     el.innerHTML=`
       <div class="m-summary" id="msum-${i}" onclick="mTogL1(${i})">
         <div><div class="m-rank-num">#${p.rank}</div><div class="m-rank-move ${m.c}">${m.t}</div></div>
-        <div class="m-img">${p.product_type_emoji||'✨'}</div>
+        <div class="m-img">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onerror="this.parentElement.innerHTML='${p.product_type_emoji||'✨'}'">`:p.product_type_emoji||'✨'}</div>
         <div class="m-info">
           <div class="m-name">${p.product_name}</div>
           <div class="m-type">${p.product_type_label||''}</div>

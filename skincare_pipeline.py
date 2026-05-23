@@ -36,7 +36,8 @@ logger = logging.getLogger(__name__)
 from safety      import guard, is_test_mode, status as safety_status, COST_ESTIMATES
 from discovery   import DiscoveryScraper
 from extractor   import ProductExtractor, ProductCandidate
-from attribution import build_attribution, generate_story
+from attribution    import build_attribution, generate_story
+from image_fetcher  import enrich_products_with_images
 from scorer import (
     GoogleSignal, TikTokSignal, InstagramSignal, RedditSignal,
     ProductSignals, run_weekly_scoring
@@ -183,11 +184,14 @@ def generate_why_trending(product_name: str, score, candidate: ProductCandidate)
 # ─── SUPABASE WRITER ─────────────────────────────────────────────────────────
 
 def write_to_supabase(ranked_scores: list, descriptions: dict,
-                       candidates: dict, run_date: date):
+                       candidates: dict, run_date: date,
+                       image_map: dict = None):
     """Writes the skincare billboard to Supabase."""
+    image_map = image_map or {}
+
     if not CONFIG["supabase_url"] or not CONFIG["supabase_key"]:
         logger.info("  No Supabase config — writing to skincare_billboard.json instead")
-        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date)
+        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date, image_map)
         with open("skincare_billboard.json", "w") as f:
             json.dump(output, f, indent=2)
         logger.info("  ✓ Written to skincare_billboard.json")
@@ -206,7 +210,7 @@ def write_to_supabase(ranked_scores: list, descriptions: dict,
 
         # Write billboard
         billboard_data = _build_billboard_json(
-            ranked_scores, descriptions, candidates, run_date
+            ranked_scores, descriptions, candidates, run_date, image_map
         )
         db.table("billboard").upsert({
             "run_date": run_date.isoformat(),
@@ -230,13 +234,15 @@ def write_to_supabase(ranked_scores: list, descriptions: dict,
     except Exception as e:
         logger.error(f"  Supabase write failed: {e}")
         # Fallback to JSON
-        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date)
+        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date, image_map)
         with open("skincare_billboard.json", "w") as f:
             json.dump(output, f, indent=2)
         logger.info("  ✓ Fallback: written to skincare_billboard.json")
 
 
-def _build_billboard_json(ranked_scores, descriptions, candidates, run_date) -> dict:
+def _build_billboard_json(ranked_scores, descriptions, candidates, run_date,
+                           image_map: dict = None) -> dict:
+    image_map = image_map or {}
     result = {
         "run_date":              run_date.isoformat(),
         "chart":                 "Skincare & Beauty",
@@ -270,6 +276,7 @@ def _build_billboard_json(ranked_scores, descriptions, candidates, run_date) -> 
             "product_type_id":   c.product_type_id if c else "",
             "product_type_label": c.product_type_label if c else "",
             "product_type_emoji": c.product_type_emoji if c else "",
+            "image_url":         image_map.get(score.product_id, {}).get("image_url", ""),
             # Attribution data for UI
             "attribution": {
                 "spark_handle":    attr.spark_handle if attr else "",
@@ -377,9 +384,24 @@ def run():
         descriptions[score.product_id] = desc
         logger.info(f"  {score.product_name}: \"{desc}\"")
 
+    # ── STEP 6b: Fetch product images ────────────────────────────────────────
+    logger.info("\n[5b/7] Fetching product images...")
+    # Build a temporary list of dicts so enrich_products_with_images can work
+    _image_map = {}
+    for score in ranked:
+        c = candidate_dict.get(score.product_id)
+        _image_map[score.product_id] = {
+            "brand":             c.brand if c else "",
+            "product_name":      score.product_name,
+            "product_type_label": c.product_type_label if c else "",
+            "image_url":         "",
+        }
+    enrich_products_with_images(list(_image_map.values()))
+
     # ── STEP 7: Write to Supabase ─────────────────────────────────────────────
     logger.info("\n[6/7] Writing to database...")
-    write_to_supabase(ranked, descriptions, candidate_dict, run_date)
+    write_to_supabase(ranked, descriptions, candidate_dict, run_date,
+                      image_map=_image_map)
 
     # ── SUMMARY ───────────────────────────────────────────────────────────────
     icons = {
