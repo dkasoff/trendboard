@@ -51,21 +51,21 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 .subheader{padding:10px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #EEE9E2;font-family:'Space Mono',monospace;font-size:9px;color:#B0A898}
 .disclaimer-pill{background:#F5F1EC;border:1px solid #E8E3DC;border-radius:20px;padding:4px 12px;color:#B0A898}
 /* COL HEADERS */
-.col-headers{display:grid;grid-template-columns:60px 52px 1fr 120px 160px;padding:8px 32px;border-bottom:1px solid #EEE9E2;font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.1em;text-transform:uppercase}
-/* PRODUCT ROW */
-.product-row{border-bottom:1px solid #EEE9E2;transition:background .15s}
-.product-row:hover{background:#F8F5F0}
-.product-row.sponsored{border-left:3px solid #E8C8C0}
-.row-summary{display:grid;grid-template-columns:60px 52px 1fr 120px 160px;padding:16px 32px;align-items:center;cursor:pointer}
+.col-headers{display:grid;grid-template-columns:56px 68px 1fr 140px 160px;padding:8px 32px;border-bottom:1px solid #EEE9E2;font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.1em;text-transform:uppercase}
+/* CATEGORY ROW */
+.cat-row{border-bottom:1px solid #EEE9E2;transition:background .15s}
+.cat-row:hover{background:#F8F5F0}
+.row-summary{display:grid;grid-template-columns:56px 68px 1fr 140px 160px;padding:16px 32px;align-items:center;cursor:pointer}
 .rank-num{font-size:22px;font-weight:800;color:#2C2420;letter-spacing:-1px;line-height:1}
-.rank-move{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.04em;margin-top:3px}
-.up{color:#7C9A7E}.down{color:#C4897B}.new-e{color:#A89AB0}.flat{color:#B0A898}
-.prod-img{width:44px;height:44px;border-radius:12px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0}
-.prod-img img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+/* CATEGORY IMAGE */
+.cat-img{width:52px;height:52px;border-radius:12px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;flex-shrink:0}
+.cat-img img{width:100%;height:100%;object-fit:cover;border-radius:12px}
+/* NAME BLOCK */
 .name-block{padding:0 16px}
-.product-name{font-size:15px;font-weight:700;color:#2C2420;line-height:1.2}
-.product-type-line{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
-.product-type-label{font-family:'Space Mono',monospace;font-size:9px;color:#B0A898;letter-spacing:.06em}
+.cat-name{font-size:17px;font-weight:800;color:#2C2420;line-height:1.1;letter-spacing:-.5px}
+.cat-meta{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap}
+.cat-count{font-family:'Space Mono',monospace;font-size:9px;color:#B0A898}
+/* STATE BADGES */
 .state-badge{font-family:'Space Mono',monospace;font-size:8px;padding:2px 7px;border-radius:20px;letter-spacing:.04em;font-weight:700}
 .state-HIGH_FLYER{background:#D8EAD9;color:#4A7A54}
 .state-NEW_ENTRY{background:#EDE8F4;color:#8268A8}
@@ -73,18 +73,13 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 .state-COOLING{background:#F0EBE4;color:#9A8878}
 .state-FALLING_STAR{background:#F8E8E4;color:#B86858}
 .state-STAPLE{background:#E4EBF4;color:#5878A8}
-.row-tags{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-.social-tag{font-family:'Space Mono',monospace;font-size:8px;padding:2px 8px;border-radius:20px;letter-spacing:.04em}
-.tag-tiktok{background:#EDE8F4;color:#8268A8}
-.tag-ig{background:#F8E8E8;color:#B86878}
-.tag-google{background:#E4F0E8;color:#4A7A5A}
-.tag-reddit{background:#F5EDD8;color:#9A7240}
-.sponsored-tag{background:#F8E8E4;color:#B86858;font-family:'Space Mono',monospace;font-size:8px;padding:2px 8px;border-radius:20px}
+/* TS BLOCK */
 .ts-block{text-align:right}
 .ts-score{font-size:28px;font-weight:800;color:#2C2420;letter-spacing:-1px;line-height:1}
 .ts-label{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC;letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
 .ts-bar{height:3px;background:#EEE9E2;border-radius:2px;margin-top:6px}
 .ts-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#7C9A7E,#A8C4AA)}
+/* EXPAND BUTTON */
 .expand-btn{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:8px;padding:7px 14px;color:#7A7068;font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:.06em;transition:all .15s;box-shadow:0 1px 3px rgba(44,36,32,0.04)}
 .expand-btn:hover{background:#F5F1EC;color:#2C2420;border-color:#D8D0C8}
 .expand-btn.open{color:#7C9A7E;border-color:#7C9A7E;background:#F2F7F2}
@@ -100,22 +95,40 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 /* L1 PANEL */
 .l1-panel{display:none;border-top:1px solid #EEE9E2;background:#FDFCFA}
 .l1-panel.open{display:block}
-.l1-inner{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+/* PRODUCT GRID */
+.prod-grid-header{padding:18px 32px 12px;font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.1em;text-transform:uppercase}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px;padding:4px 32px 24px}
+.prod-card{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:14px;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.prod-card:hover{box-shadow:0 4px 14px rgba(44,36,32,0.08);border-color:#D0C8C0}
+.prod-card-img{width:100%;height:130px;object-fit:cover;display:block;background:#F0EBE4}
+.prod-card-placeholder{width:100%;height:130px;display:flex;align-items:center;justify-content:center;font-size:38px;background:#F5F1EC}
+.prod-card-body{padding:12px}
+.prod-card-pos{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC;margin-bottom:3px}
+.prod-card-name{font-size:12px;font-weight:700;color:#2C2420;line-height:1.3;margin-bottom:2px}
+.prod-card-brand{font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;letter-spacing:.04em;text-transform:uppercase;margin-bottom:5px}
+.prod-card-ts{font-family:'Space Mono',monospace;font-size:9px;color:#7C9A7E;font-weight:700;margin-bottom:8px}
+.prod-card-buy{display:block;width:100%;text-align:center;background:#7C9A7E;color:#fff;border-radius:8px;padding:8px 6px;font-family:'Space Mono',monospace;font-size:8px;text-decoration:none;letter-spacing:.04em;transition:background .15s;box-sizing:border-box}
+.prod-card-buy:hover{background:#6A8870}
+/* WHY STRIP */
+.cat-why-strip{display:flex;align-items:center;gap:16px;padding:14px 32px 20px;border-top:1px solid #EEE9E2}
+.cat-why-text{font-size:13px;line-height:1.65;color:#5A5048;font-style:italic;flex:1}
+.cat-why-srcs{display:flex;gap:5px;flex-shrink:0}
+.src-chip{font-family:'Space Mono',monospace;font-size:8px;padding:3px 9px;border-radius:20px;letter-spacing:.04em}
+.src-tiktok{background:#EDE8F4;color:#8268A8}
+.src-ig{background:#F8E8E8;color:#B86878}
+.src-google{background:#E4F0E8;color:#4A7A5A}
+.trend-data-btn{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:8px;padding:6px 12px;color:#B0A898;font-family:'Space Mono',monospace;font-size:8px;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:all .15s;letter-spacing:.06em}
+.trend-data-btn:hover{color:#2C2420;border-color:#D0C8C0}
+.trend-data-btn.open{color:#7C9A7E;border-color:#7C9A7E;background:#F2F7F2}
+.trend-data-btn.open .chevron{transform:rotate(180deg)}
+/* ANALYTICS (collapsible within L1) */
+.l1-analytics{display:none;border-top:1px solid #EEE9E2;background:#FAF8F5}
+.l1-analytics.open{display:grid;grid-template-columns:1fr 1fr}
 .l1-chart-section{padding:22px 32px;border-right:1px solid #EEE9E2}
 .l1-chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
 .l1-chart-lbl{font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.08em}
 .l1-chart-growth{font-family:'Space Mono',monospace;font-size:11px;color:#7C9A7E;font-weight:700}
 .l1-chart-wrap{height:120px;position:relative}
-.l1-chart-note{font-family:'Space Mono',monospace;font-size:8px;color:#D8D0C8;margin-top:6px;letter-spacing:.06em}
-.l1-why-section{padding:22px 24px;border-right:1px solid #EEE9E2}
-.l1-why-label{font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
-.l1-why-text{font-size:13px;line-height:1.65;color:#5A5048;font-style:italic;margin-bottom:14px}
-.l1-why-srcs{display:flex;gap:5px;flex-wrap:wrap}
-.src-chip{font-family:'Space Mono',monospace;font-size:8px;padding:3px 9px;border-radius:20px;letter-spacing:.04em}
-.src-tiktok{background:#EDE8F4;color:#8268A8}
-.src-ig{background:#F8E8E8;color:#B86878}
-.src-google{background:#E4F0E8;color:#4A7A5A}
-/* ATTRIBUTION */
 .l1-attribution{padding:22px 24px}
 .l1-attr-label{font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px}
 .attr-spark-card{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px rgba(44,36,32,0.05)}
@@ -132,31 +145,10 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 .attr-pattern-badge.grassroots{background:#EEF4E4;color:#688050;border-color:#D0DCC0}
 .attr-pattern-badge.brand_pushed{background:#F5EDD8;color:#9A7240;border-color:#E0D0B0}
 .attr-derm-badge{display:inline-flex;align-items:center;gap:4px;background:#E4F0E8;color:#4A7A5A;border-radius:20px;padding:3px 9px;font-family:'Space Mono',monospace;font-size:8px;margin-left:6px}
-/* L2 */
-.l2-trigger-row{display:none;padding:10px 32px;background:#F5F1EC;border-top:1px solid #EEE9E2}
-.l2-trigger-row.open{display:block}
-.l2-btn{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:8px;padding:7px 14px;color:#B0A898;font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:.06em;transition:all .15s;box-shadow:0 1px 3px rgba(44,36,32,0.04)}
-.l2-btn:hover{color:#2C2420;border-color:#D0C8C0}
-.l2-btn.open{color:#7C9A7E;border-color:#7C9A7E;background:#F2F7F2}
-.l2-panel{display:none;background:#F5F1EC;border-top:1px solid #EEE9E2;padding:22px 32px}
-.l2-panel.open{display:block}
-.l2-title{font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
-.options-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:14px}
-.option-card{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:12px;padding:16px;transition:box-shadow .15s,border-color .15s;box-shadow:0 1px 4px rgba(44,36,32,0.05)}
-.option-card:hover{box-shadow:0 3px 10px rgba(44,36,32,0.08);border-color:#D8D0C8}
-.option-card.is-trending{border-left:3px solid #7C9A7E}
-.option-card.is-sponsored{border-left:3px solid #C4897B}
-.opt-badge{font-family:'Space Mono',monospace;font-size:8px;margin-bottom:8px;padding:2px 8px;border-radius:20px;display:inline-block}
-.badge-sponsored{background:#F8E8E4;color:#B86858}
-.badge-trending{background:#E4F0E8;color:#4A7A5A}
-.badge-popular{background:#F0EBE4;color:#9A8878}
-.opt-name{font-size:13px;font-weight:700;color:#2C2420;margin-bottom:3px}
-.opt-brand{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC;margin-bottom:6px}
-.opt-price{font-size:16px;font-weight:800;color:#2C2420;margin-bottom:3px}
-.opt-rating{font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-bottom:12px}
-.opt-buy{display:block;text-align:center;background:#7C9A7E;color:#fff;border-radius:8px;padding:8px;font-family:'Space Mono',monospace;font-size:9px;text-decoration:none;letter-spacing:.06em;transition:background .15s}
-.opt-buy:hover{background:#6A8870}
-.l2-disclaimer{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC;line-height:1.7}
+/* SOCIAL TAGS */
+.social-tag{font-family:'Space Mono',monospace;font-size:8px;padding:2px 8px;border-radius:20px;letter-spacing:.04em}
+.tag-tiktok{background:#EDE8F4;color:#8268A8}
+.tag-google{background:#E4F0E8;color:#4A7A5A}
 /* EMPTY */
 .empty-state{padding:60px 32px;text-align:center}
 .empty-icon{font-size:48px;margin-bottom:16px}
@@ -169,50 +161,34 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
   header{padding:14px 16px}
   .logo{font-size:26px}
   .subheader{padding:8px 16px;flex-direction:column;gap:5px}
-  .filter-bar{padding:0 12px}
 }
 @media(min-width:769px){.mobile-view{display:none}}
 /* MOBILE CARDS */
 .m-card{border-bottom:1px solid #EEE9E2}
-.m-card.sponsored{border-left:3px solid #E8C8C0}
-.m-summary{display:grid;grid-template-columns:50px 44px 1fr auto;padding:14px 16px;align-items:center;cursor:pointer}
+.m-summary{display:grid;grid-template-columns:46px 44px 1fr auto;padding:14px 16px;align-items:center;cursor:pointer;gap:2px}
 .m-rank-num{font-size:20px;font-weight:800;color:#2C2420;letter-spacing:-1px}
-.m-rank-move{font-family:'Space Mono',monospace;font-size:8px;margin-top:2px}
 .m-img{width:38px;height:38px;border-radius:10px;background:#F0EBE4;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0}
 .m-img img{width:100%;height:100%;object-fit:cover;border-radius:10px}
 .m-info{padding:0 10px}
-.m-name{font-size:13px;font-weight:700;color:#2C2420;line-height:1.2}
+.m-name{font-size:14px;font-weight:800;color:#2C2420;line-height:1.2}
 .m-type{font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-top:3px}
-.m-tags{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
 .m-right{text-align:right}
 .m-ts{font-size:18px;font-weight:800;color:#2C2420}
 .m-ts-lbl{font-family:'Space Mono',monospace;font-size:7px;color:#CEC6BC}
 .m-chevron{font-size:12px;color:#CEC6BC;display:block;margin-top:4px;transition:transform .2s}
 .m-summary.open .m-chevron{transform:rotate(180deg)}
-.m-l1-panel{display:none;padding:16px 16px;border-top:1px solid #EEE9E2;background:#FDFCFA}
+.m-l1-panel{display:none;background:#FDFCFA;border-top:1px solid #EEE9E2}
 .m-l1-panel.open{display:block}
-.m-chart-box{margin-bottom:14px}
-.m-chart-top{display:flex;justify-content:space-between;margin-bottom:6px}
-.m-chart-lbl{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC}
-.m-chart-growth{font-family:'Space Mono',monospace;font-size:9px;color:#7C9A7E;font-weight:700}
-.m-chart-wrap{height:80px}
-.m-why-box{margin-bottom:12px}
-.m-why-label{font-family:'Space Mono',monospace;font-size:8px;color:#CEC6BC;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.m-why-text{font-size:12px;line-height:1.55;color:#5A5048;font-style:italic;margin-bottom:8px}
-.m-attr-row{font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-bottom:4px}
-.m-attr-row strong{color:#7C9A7E}
-.m-l2-trigger{display:none;padding:8px 16px;background:#F5F1EC;border-top:1px solid #EEE9E2}
-.m-l2-trigger.open{display:block}
-.m-l2-btn{background:#FFFFFF;border:1px solid #E8E3DC;border-radius:8px;padding:7px 12px;color:#B0A898;font-family:'Space Mono',monospace;font-size:9px;cursor:pointer;width:100%;letter-spacing:.06em}
-.m-l2-panel{display:none;background:#F5F1EC;border-top:1px solid #EEE9E2;padding:14px 16px}
-.m-l2-panel.open{display:block}
-.m-opt{display:flex;justify-content:space-between;align-items:center;border:1px solid #E8E3DC;border-radius:10px;padding:12px;margin-bottom:8px;background:#FFFFFF}
-.m-opt.is-trending{border-left:3px solid #7C9A7E}
-.m-opt.is-sponsored{border-left:3px solid #C4897B}
-.m-opt-left{flex:1}
-.m-opt-right{text-align:right;margin-left:10px}
-.m-opt-price{font-size:15px;font-weight:800;color:#2C2420}
-.m-opt-buy{display:block;margin-top:6px;background:#7C9A7E;color:#fff;border-radius:6px;padding:6px 10px;font-family:'Space Mono',monospace;font-size:8px;text-decoration:none;text-align:center}
+.m-prod-list{padding:12px 14px 4px}
+.m-prod-item{display:flex;gap:10px;align-items:flex-start;border:1px solid #E8E3DC;border-radius:10px;padding:10px;margin-bottom:8px;background:#FFFFFF}
+.m-prod-item-img{width:56px;height:56px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#F0EBE4}
+.m-prod-item-info{flex:1;min-width:0}
+.m-prod-item-pos{font-family:'Space Mono',monospace;font-size:7px;color:#CEC6BC;margin-bottom:2px}
+.m-prod-item-name{font-size:12px;font-weight:700;color:#2C2420;line-height:1.3;margin-bottom:1px}
+.m-prod-item-brand{font-family:'Space Mono',monospace;font-size:7px;color:#B0A898;text-transform:uppercase;margin-bottom:5px}
+.m-prod-item-buy{display:inline-block;background:#7C9A7E;color:#fff;border-radius:6px;padding:5px 9px;font-family:'Space Mono',monospace;font-size:7px;text-decoration:none;letter-spacing:.04em}
+.m-why-box{padding:10px 14px 14px}
+.m-why-text{font-size:11px;line-height:1.6;color:#5A5048;font-style:italic}
 .footer-note{padding:28px 32px;font-family:'Space Mono',monospace;font-size:9px;color:#CEC6BC;line-height:1.9;border-top:1px solid #EEE9E2}
 </style>
 </head>
@@ -235,20 +211,18 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
   </div>
 </header>
 
-<div class="filter-bar" id="filter-bar">
-  <button class="filter-tab active" data-type="all" onclick="filterType('all')">All <span class="filter-count" id="count-all">0</span></button>
-</div>
+
 
 <div class="subheader">
-  <div>Skincare &amp; Beauty &middot; Social signals + Google Trends &middot; Top 25 this week</div>
-  <div class="disclaimer-pill">&#9733; Sponsored = partner &middot; rank is always real data</div>
+  <div>Skincare &amp; Beauty &middot; Categories ranked by aggregate trend score &middot; Updated weekly</div>
+  <div class="disclaimer-pill">&#9733; Rank is always data, never payment</div>
 </div>
 
 <div class="desktop-view">
   <div class="col-headers">
-    <div>RANK</div><div></div><div>PRODUCT</div>
-    <div style="text-align:right">TREND SCORE</div>
-    <div style="text-align:right">DATA + WHY &rarr;</div>
+    <div>RANK</div><div></div><div>CATEGORY</div>
+    <div style="text-align:right">CATEGORY SCORE</div>
+    <div style="text-align:right">TOP PRODUCTS &rarr;</div>
   </div>
   <div id="desktop-rows"></div>
 </div>
@@ -258,105 +232,114 @@ header{padding:20px 32px 16px;display:flex;align-items:flex-end;justify-content:
 </div>
 
 <div class="footer-note">
-  Trendboard.fyi ranks products using a weighted score: Velocity (22%) &middot; Density (28%) &middot; Sentiment (18%) &middot; Conversion (32%).<br>
-  Data sources: TikTok creator signals &middot; Google Trends &middot; Instagram &middot; Reddit.<br>
-  &#9733; Sponsored placements are labeled. Organic rank is never for sale.
+  Categories ranked by aggregate trend score across all products in that type.<br>
+  Score = Velocity (22%) &middot; Density (28%) &middot; Sentiment (18%) &middot; Conversion (32%).<br>
+  Data: TikTok creator signals &middot; Google Trends &middot; Reddit &middot; &#9733; Rank is never for sale.
 </div>
 
 <script>
-const MOCK={run_date:"2026-05-10",ranked_scores:[
-{rank:1,product_id:"anua_toner",product_name:"Anua Heartleaf Toner",brand:"anua",product_type_id:"toner",product_type_label:"Toner",product_type_emoji:"\u{1F30A}",final_ts:91.2,velocity_score:88,density_score:92,sentiment_score:95,conversion_score:90,state:"HIGH_FLYER",why_trending:"Hyram posted once; 300 creators followed within the week",unique_creators:312,sponsored_count:18,organic_count:294,attribution:{spark_handle:"skincarebyhyram",spark_label:"Hyram (6.8M skincare educator)",spark_followers:6800000,spark_likes:480000,days_since_spark:5,creators_after_spark:289,pattern:"educator_sparked",pattern_label:"Skincare educator-sparked",organic_ratio:0.94,has_derm:false}},
-{rank:2,product_id:"cosrx_snail",product_name:"COSRX Snail Mucin Serum",brand:"cosrx",product_type_id:"serum",product_type_label:"Serum / Essence",product_type_emoji:"\u{1F4A7}",final_ts:88.7,velocity_score:82,density_score:90,sentiment_score:92,conversion_score:89,state:"HIGH_FLYER",why_trending:"Dermatologists validated the formula; the before/afters did the rest",unique_creators:287,sponsored_count:22,organic_count:265,attribution:{spark_handle:"dermdoctor",spark_label:"Dr. Dray (17M-follower dermatologist)",spark_followers:17000000,spark_likes:620000,days_since_spark:8,creators_after_spark:265,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.92,has_derm:true}},
-{rank:3,product_id:"boj_spf",product_name:"Beauty of Joseon Relief Sun SPF50",brand:"beauty of joseon",product_type_id:"sunscreen",product_type_label:"Sunscreen / SPF",product_type_emoji:"☀️",final_ts:86.1,velocity_score:90,density_score:84,sentiment_score:88,conversion_score:83,state:"HIGH_FLYER",why_trending:"K-beauty micro-creators drove organic buzz 3 weeks before any mega post landed",unique_creators:245,sponsored_count:12,organic_count:233,attribution:{spark_handle:"beautywithinofficial",spark_label:"Beauty Within (3M K-beauty)",spark_followers:3000000,spark_likes:290000,days_since_spark:11,creators_after_spark:218,pattern:"kbeauty_wave",pattern_label:"K-beauty wave",organic_ratio:0.95,has_derm:false}},
-{rank:4,product_id:"paulas_bha",product_name:"Paula's Choice 2% BHA Exfoliant",brand:"paula's choice",product_type_id:"exfoliant",product_type_label:"Exfoliant",product_type_emoji:"✨",final_ts:83.4,velocity_score:78,density_score:85,sentiment_score:87,conversion_score:84,state:"TRENDING",why_trending:"Every derm on TikTok posted the same week — something in the data broke",unique_creators:198,sponsored_count:8,organic_count:190,attribution:{spark_handle:"drwhitneybowe",spark_label:"Dr. Whitney Bowe (dermatologist)",spark_followers:1100000,spark_likes:215000,days_since_spark:6,creators_after_spark:180,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.96,has_derm:true}},
-{rank:5,product_id:"nuface",product_name:"NuFACE Trinity Microcurrent",brand:"nuface",product_type_id:"microcurrent",product_type_label:"Microcurrent Device",product_type_emoji:"⚡",final_ts:81.0,velocity_score:85,density_score:79,sentiment_score:82,conversion_score:79,state:"TRENDING",why_trending:"The before/afters went viral; brands scrambled to sponsor it after the fact",unique_creators:172,sponsored_count:45,organic_count:127,attribution:{spark_handle:"mikaylanogueira",spark_label:"Mikayla Nogueira (16.7M)",spark_followers:16700000,spark_likes:890000,days_since_spark:9,creators_after_spark:148,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.74,has_derm:false}},
-{rank:6,product_id:"mighty_patch",product_name:"Mighty Patch Original",brand:"hero cosmetics",product_type_id:"spot_treatment",product_type_label:"Spot Treatment",product_type_emoji:"\u{1F3AF}",final_ts:78.3,velocity_score:72,density_score:81,sentiment_score:84,conversion_score:77,state:"TRENDING",why_trending:"Overnight result videos are the most-shared skincare format on TikTok right now",unique_creators:156,sponsored_count:30,organic_count:126,attribution:{spark_handle:"skincarebyhyram",spark_label:"Hyram (6.8M skincare educator)",spark_followers:6800000,spark_likes:340000,days_since_spark:14,creators_after_spark:132,pattern:"educator_sparked",pattern_label:"Skincare educator-sparked",organic_ratio:0.81,has_derm:false}},
-{rank:7,product_id:"laneige_lip",product_name:"Laneige Lip Sleeping Mask",brand:"laneige",product_type_id:"lip_care",product_type_label:"Lip Care",product_type_emoji:"\u{1F48B}",final_ts:76.8,velocity_score:70,density_score:78,sentiment_score:86,conversion_score:74,state:"STAPLE",why_trending:"Amazon restocks sell out within hours — scarcity is now part of its identity",unique_creators:143,sponsored_count:38,organic_count:105,attribution:{spark_handle:"",spark_label:"Multiple viral creators",spark_followers:0,spark_likes:0,days_since_spark:21,creators_after_spark:110,pattern:"grassroots",pattern_label:"Organic grassroots",organic_ratio:0.73,has_derm:false}},
-{rank:8,product_id:"solawave",product_name:"Solawave Red Light Wand",brand:"solawave",product_type_id:"facial_tool",product_type_label:"Facial Tool",product_type_emoji:"\u{1FAA8}",final_ts:74.5,velocity_score:80,density_score:72,sentiment_score:78,conversion_score:70,state:"NEW_ENTRY",why_trending:"2-week transformation videos hitting 1M+ views — the format fits the product perfectly",unique_creators:128,sponsored_count:55,organic_count:73,attribution:{spark_handle:"glamzilla",spark_label:"Glamzilla (5M)",spark_followers:5000000,spark_likes:560000,days_since_spark:7,creators_after_spark:105,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.57,has_derm:false}},
-{rank:9,product_id:"cerave_cream",product_name:"CeraVe Moisturizing Cream",brand:"cerave",product_type_id:"moisturizer",product_type_label:"Moisturizer",product_type_emoji:"\u{1F9F4}",final_ts:72.1,velocity_score:62,density_score:76,sentiment_score:80,conversion_score:72,state:"STAPLE",why_trending:"Dermatologist consensus built over 3 years; it never needs another viral moment",unique_creators:118,sponsored_count:10,organic_count:108,attribution:{spark_handle:"dermdoctor",spark_label:"Collective derm endorsement",spark_followers:0,spark_likes:0,days_since_spark:30,creators_after_spark:90,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.92,has_derm:true}},
-{rank:10,product_id:"currentbody_led",product_name:"CurrentBody LED Face Mask",brand:"currentbody",product_type_id:"led_device",product_type_label:"LED & Light Therapy",product_type_emoji:"\u{1F4A1}",final_ts:70.4,velocity_score:76,density_score:68,sentiment_score:74,conversion_score:65,state:"NEW_ENTRY",why_trending:"Victoria Beckham posted wearing it — luxury skincare tech hit mainstream overnight",unique_creators:104,sponsored_count:42,organic_count:62,attribution:{spark_handle:"",spark_label:"Celebrity post",spark_followers:32000000,spark_likes:1200000,days_since_spark:4,creators_after_spark:88,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.60,has_derm:false}}
+// ── MOCK DATA — category-first structure ─────────────────────────────────────
+function imgProxy(asin){return`https://wsrv.nl/?url=m.media-amazon.com/images/I/${asin}._SL400_.jpg&w=400&h=400&fit=cover&output=webp`;}
+const MOCK={run_date:"2026-05-23",ranked_categories:[
+{rank:1,type_id:"toner",type_label:"Toner",type_emoji:"🌊",category_ts:91.2,state:"HIGH_FLYER",why_trending:"K-beauty micro-creators sparked a toner wave — Hyram's single Anua post triggered 300 creator follows in 5 days.",velocity_score:88,density_score:92,sentiment_score:95,conversion_score:90,product_count:1,category_image:"https://images.unsplash.com/photo-1631390090687-5a9c3b88ec5e?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"anua_toner",product_name:"Heartleaf 77% Toner",brand:"Anua",final_ts:91.2,state:"HIGH_FLYER",image_url:imgProxy("71Xm4bfNBhL"),buy_url:"https://www.amazon.com/s?k=Anua+Heartleaf+Toner&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"skincarebyhyram",spark_label:"Hyram (6.8M)",spark_likes:480000,days_since_spark:5,creators_after_spark:289,pattern:"educator_sparked",pattern_label:"Educator-sparked",organic_ratio:0.94,has_derm:false}}
+]},
+{rank:2,type_id:"serum",type_label:"Serum",type_emoji:"💧",category_ts:88.7,state:"HIGH_FLYER",why_trending:"Dermatologists validated the formula; the snail mucin before/afters did the rest.",velocity_score:82,density_score:90,sentiment_score:92,conversion_score:89,product_count:1,category_image:"https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"cosrx_snail",product_name:"Advanced Snail 96 Mucin Power Essence",brand:"COSRX",final_ts:88.7,state:"HIGH_FLYER",image_url:imgProxy("71yMXTNcGqL"),buy_url:"https://www.amazon.com/s?k=COSRX+Snail+Mucin+Serum&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"dermdoctor",spark_label:"Dr. Dray (17M)",spark_likes:620000,days_since_spark:8,creators_after_spark:265,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.92,has_derm:true}}
+]},
+{rank:3,type_id:"sunscreen",type_label:"Sunscreen / SPF",type_emoji:"☀️",category_ts:86.1,state:"HIGH_FLYER",why_trending:"K-beauty micro-creators drove organic buzz 3 weeks before any mega post landed.",velocity_score:90,density_score:84,sentiment_score:88,conversion_score:83,product_count:1,category_image:"https://images.unsplash.com/photo-1556228852-80b6e5eeff06?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"boj_spf",product_name:"Relief Sun SPF50+",brand:"Beauty of Joseon",final_ts:86.1,state:"HIGH_FLYER",image_url:imgProxy("71G8JqFWMqL"),buy_url:"https://www.amazon.com/s?k=Beauty+of+Joseon+Relief+Sun&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"beautywithinofficial",spark_label:"Beauty Within (3M)",spark_likes:290000,days_since_spark:11,creators_after_spark:218,pattern:"kbeauty_wave",pattern_label:"K-beauty wave",organic_ratio:0.95,has_derm:false}}
+]},
+{rank:4,type_id:"exfoliant",type_label:"Exfoliant",type_emoji:"✨",category_ts:83.4,state:"TRENDING",why_trending:"Every derm on TikTok posted the same week — something in the data moved.",velocity_score:78,density_score:85,sentiment_score:87,conversion_score:84,product_count:1,category_image:"https://images.unsplash.com/photo-1556228841-a3c527ebefe5?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"paulas_bha",product_name:"Skin Perfecting 2% BHA Liquid Exfoliant",brand:"Paula's Choice",final_ts:83.4,state:"TRENDING",image_url:imgProxy("71Z7d4Og5bL"),buy_url:"https://www.paulaschoice.com/skin-perfecting-2pct-bha-liquid-exfoliant/201.html",buy_source:"brand",buy_label:"Shop on paulaschoice.com",attribution:{spark_handle:"drwhitneybowe",spark_label:"Dr. Whitney Bowe (1.1M)",spark_likes:215000,days_since_spark:6,creators_after_spark:180,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.96,has_derm:true}}
+]},
+{rank:5,type_id:"microcurrent",type_label:"Microcurrent Device",type_emoji:"⚡",category_ts:81.0,state:"TRENDING",why_trending:"Before/after transformation videos went viral; brands scrambled to sponsor it after the fact.",velocity_score:85,density_score:79,sentiment_score:82,conversion_score:79,product_count:1,category_image:"https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"nuface",product_name:"Trinity Facial Toning Device",brand:"NuFACE",final_ts:81.0,state:"TRENDING",image_url:imgProxy("61oP4Hs3T5L"),buy_url:"https://www.mynuface.com/products/nuface-trinity-facial-toning-device",buy_source:"brand",buy_label:"Shop on mynuface.com",attribution:{spark_handle:"mikaylanogueira",spark_label:"Mikayla Nogueira (16.7M)",spark_likes:890000,days_since_spark:9,creators_after_spark:148,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.74,has_derm:false}}
+]},
+{rank:6,type_id:"spot_treatment",type_label:"Spot Treatment",type_emoji:"🎯",category_ts:78.3,state:"TRENDING",why_trending:"Overnight result videos are the most-shared skincare format on TikTok right now.",velocity_score:72,density_score:81,sentiment_score:84,conversion_score:77,product_count:1,category_image:"https://images.unsplash.com/photo-1556228453-efd6c1ff04f6?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"mighty_patch",product_name:"Mighty Patch Original",brand:"Hero Cosmetics",final_ts:78.3,state:"TRENDING",image_url:imgProxy("71QZRQ8XSNL"),buy_url:"https://www.amazon.com/s?k=Mighty+Patch+Original&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"skincarebyhyram",spark_label:"Hyram (6.8M)",spark_likes:340000,days_since_spark:14,creators_after_spark:132,pattern:"educator_sparked",pattern_label:"Educator-sparked",organic_ratio:0.81,has_derm:false}}
+]},
+{rank:7,type_id:"lip_care",type_label:"Lip Care",type_emoji:"💋",category_ts:76.8,state:"STAPLE",why_trending:"Amazon restocks sell out within hours — scarcity is now part of its identity.",velocity_score:70,density_score:78,sentiment_score:86,conversion_score:74,product_count:1,category_image:"https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"laneige_lip",product_name:"Lip Sleeping Mask",brand:"Laneige",final_ts:76.8,state:"STAPLE",image_url:imgProxy("71EHnBNFSLL"),buy_url:"https://www.amazon.com/s?k=Laneige+Lip+Sleeping+Mask&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"",spark_label:"Multiple viral creators",spark_likes:0,days_since_spark:21,creators_after_spark:110,pattern:"grassroots",pattern_label:"Organic grassroots",organic_ratio:0.73,has_derm:false}}
+]},
+{rank:8,type_id:"facial_tool",type_label:"Facial Tool",type_emoji:"🪨",category_ts:74.5,state:"NEW_ENTRY",why_trending:"2-week transformation videos hitting 1M+ views — the format fits this product perfectly.",velocity_score:80,density_score:72,sentiment_score:78,conversion_score:70,product_count:1,category_image:"https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"solawave",product_name:"Radiant Renewal Skincare Wand",brand:"Solawave",final_ts:74.5,state:"NEW_ENTRY",image_url:imgProxy("61rrMVxHQgL"),buy_url:"https://solawave.co/products/radiant-renewal-skincare-wand",buy_source:"brand",buy_label:"Shop on solawave.co",attribution:{spark_handle:"glamzilla",spark_label:"Glamzilla (5M)",spark_likes:560000,days_since_spark:7,creators_after_spark:105,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.57,has_derm:false}}
+]},
+{rank:9,type_id:"moisturizer",type_label:"Moisturizer",type_emoji:"🧴",category_ts:72.1,state:"STAPLE",why_trending:"Dermatologist consensus built over 3 years; it never needs another viral moment.",velocity_score:62,density_score:76,sentiment_score:80,conversion_score:72,product_count:1,category_image:"https://images.unsplash.com/photo-1570194065650-d99fb4b8ccb0?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"cerave_cream",product_name:"Moisturizing Cream",brand:"CeraVe",final_ts:72.1,state:"STAPLE",image_url:imgProxy("61S7BrCBj7L"),buy_url:"https://www.amazon.com/s?k=CeraVe+Moisturizing+Cream&tag=trendboard05-20",buy_source:"amazon",buy_label:"Shop on Amazon",attribution:{spark_handle:"dermdoctor",spark_label:"Collective derm endorsement",spark_likes:0,days_since_spark:30,creators_after_spark:90,pattern:"derm_sparked",pattern_label:"Dermatologist-sparked",organic_ratio:0.92,has_derm:true}}
+]},
+{rank:10,type_id:"led_device",type_label:"LED & Light Therapy",type_emoji:"💡",category_ts:70.4,state:"NEW_ENTRY",why_trending:"Victoria Beckham posted wearing it — luxury skincare tech hit mainstream overnight.",velocity_score:76,density_score:68,sentiment_score:74,conversion_score:65,product_count:1,category_image:"https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=300&h=300&fit=crop&q=80",products:[
+  {product_id:"currentbody_led",product_name:"LED Light Therapy Face Mask",brand:"CurrentBody",final_ts:70.4,state:"NEW_ENTRY",image_url:imgProxy("41-Pq9VFPoL"),buy_url:"https://www.currentbody.com/products/currentbody-skin-led-light-therapy-face-mask",buy_source:"brand",buy_label:"Shop on currentbody.com",attribution:{spark_handle:"",spark_label:"Celebrity post",spark_likes:1200000,days_since_spark:4,creators_after_spark:88,pattern:"viral_sparked",pattern_label:"Viral reviewer-sparked",organic_ratio:0.60,has_derm:false}}
+]}
 ]};
 
-// Product images — proxied through wsrv.nl to bypass Amazon hotlink protection
-// wsrv.nl is a free image CDN that handles CORS cleanly
-function imgProxy(asin){return`https://wsrv.nl/?url=m.media-amazon.com/images/I/${asin}._SL300_.jpg&w=300&h=300&fit=cover&output=webp`;}
-const MOCK_IMAGES={
-  anua_toner:      imgProxy("71Xm4bfNBhL"),
-  cosrx_snail:     imgProxy("71yMXTNcGqL"),
-  boj_spf:         imgProxy("71G8JqFWMqL"),
-  paulas_bha:      imgProxy("71Z7d4Og5bL"),
-  nuface:          imgProxy("61oP4Hs3T5L"),
-  mighty_patch:    imgProxy("71QZRQ8XSNL"),
-  laneige_lip:     imgProxy("71EHnBNFSLL"),
-  solawave:        imgProxy("61rrMVxHQgL"),
-  cerave_cream:    imgProxy("61S7BrCBj7L"),
-  currentbody_led: imgProxy("41-Pq9VFPoL"),
-};
-// Mock buy links — resolved per brand logic
-const MOCK_BUY={
-  anua_toner:      {buy_url:"https://www.amazon.com/s?k=Anua+Heartleaf+Toner&tag=trendboard05-20",        buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  cosrx_snail:     {buy_url:"https://www.amazon.com/s?k=COSRX+Snail+Mucin+Serum&tag=trendboard05-20",    buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  boj_spf:         {buy_url:"https://www.amazon.com/s?k=Beauty+of+Joseon+Relief+Sun&tag=trendboard05-20",buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  paulas_bha:      {buy_url:"https://www.paulaschoice.com/skin-perfecting-2pct-bha-liquid-exfoliant/201.html", buy_source:"brand", buy_label:"Shop on paulaschoice.com"},
-  nuface:          {buy_url:"https://www.mynuface.com/products/nuface-trinity-facial-toning-device",     buy_source:"brand",   buy_label:"Shop on mynuface.com"},
-  mighty_patch:    {buy_url:"https://www.amazon.com/s?k=Mighty+Patch+Original&tag=trendboard05-20",      buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  laneige_lip:     {buy_url:"https://www.amazon.com/s?k=Laneige+Lip+Sleeping+Mask&tag=trendboard05-20",  buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  solawave:        {buy_url:"https://solawave.co/products/radiant-renewal-skincare-wand",                buy_source:"brand",   buy_label:"Shop on solawave.co"},
-  cerave_cream:    {buy_url:"https://www.amazon.com/s?k=CeraVe+Moisturizing+Cream&tag=trendboard05-20",  buy_source:"amazon",  buy_label:"Shop on Amazon"},
-  currentbody_led: {buy_url:"https://www.currentbody.com/products/currentbody-skin-led-light-therapy-face-mask", buy_source:"brand", buy_label:"Shop on currentbody.com"},
-};
-// Merge image + buy link data into mock products
-MOCK.ranked_scores.forEach(p=>{
-  if(!p.image_url && MOCK_IMAGES[p.product_id])   p.image_url=MOCK_IMAGES[p.product_id];
-  if(!p.buy_url   && MOCK_BUY[p.product_id])      Object.assign(p, MOCK_BUY[p.product_id]);
-});
-
-const STATE_LABELS={HIGH_FLYER:"\u{1F680} High Flyer",NEW_ENTRY:"\u{1F195} New Entry",TRENDING:"\u{1F4C8} Trending",COOLING:"\u{1F321}️ Cooling",FALLING_STAR:"⚠️ Falling",STAPLE:"\u{1F4CA} Staple"};
-let PRODUCTS=[], ACTIVE_TYPE='all';
+// ── STATE / CONSTANTS ────────────────────────────────────────────────────────
+const STATE_LABELS={HIGH_FLYER:"🚀 High Flyer",NEW_ENTRY:"🆕 New Entry",TRENDING:"📈 Trending",COOLING:"🌡️ Cooling",FALLING_STAR:"⚠️ Falling",STAPLE:"📊 Staple"};
+const SOURCE_ICONS={amazon:"🛒",brand:"🔗",sephora:"🖤",ulta:"💄"};
+let CATEGORIES=[];
 const charts={};
 
+// ── DATA LOAD ────────────────────────────────────────────────────────────────
 async function loadData(){
   try{
     const r=await fetch('skincare_billboard.json?v='+Date.now());
-    if(!r.ok)throw new Error('no file');
+    if(!r.ok)throw new Error();
     const d=await r.json();
-    PRODUCTS=d.ranked_scores||[];
+    CATEGORIES=d.ranked_categories||[];
     document.getElementById('run-date').textContent=d.run_date||'—';
-    document.getElementById('header-mode').innerHTML='\u{1F7E2} Live Data';
-    document.getElementById('header-mode').style.color='#00c896';
+    document.getElementById('header-mode').innerHTML='🟢 Live Data';
+    document.getElementById('header-mode').style.color='#7C9A7E';
   }catch{
-    PRODUCTS=MOCK.ranked_scores;
-    document.getElementById('run-date').textContent=MOCK.run_date+' (test)';
+    CATEGORIES=MOCK.ranked_categories;
+    document.getElementById('run-date').textContent=MOCK.run_date+' (preview)';
   }
-  buildFilterBar(); renderDesktop(PRODUCTS); renderMobile(PRODUCTS);
+  renderDesktop(CATEGORIES);
+  renderMobile(CATEGORIES);
 }
 
-function buildFilterBar(){
-  const bar=document.getElementById('filter-bar');
-  const counts={};
-  PRODUCTS.forEach(p=>{counts[p.product_type_id]=(counts[p.product_type_id]||0)+1});
-  document.getElementById('count-all').textContent=PRODUCTS.length;
-  const seen=[];
-  PRODUCTS.forEach(p=>{if(!seen.find(t=>t.id===p.product_type_id))seen.push({id:p.product_type_id,label:p.product_type_label,emoji:p.product_type_emoji})});
-  seen.forEach(t=>{
-    const b=document.createElement('button');
-    b.className='filter-tab'; b.dataset.type=t.id; b.onclick=()=>filterType(t.id);
-    b.innerHTML=`${t.emoji} ${t.label} <span class="filter-count" id="count-${t.id}">${counts[t.id]||0}</span>`;
-    bar.appendChild(b);
-  });
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function scoreBars(d){
+  return`<div class="score-bars">
+    <div class="score-bar-item"><div class="score-bar-lbl">VEL</div><div class="score-bar-track"><div class="score-bar-fill bar-v" style="width:${d.velocity_score||0}%"></div></div></div>
+    <div class="score-bar-item"><div class="score-bar-lbl">DEN</div><div class="score-bar-track"><div class="score-bar-fill bar-d" style="width:${d.density_score||0}%"></div></div></div>
+    <div class="score-bar-item"><div class="score-bar-lbl">SEN</div><div class="score-bar-track"><div class="score-bar-fill bar-s" style="width:${d.sentiment_score||0}%"></div></div></div>
+    <div class="score-bar-item"><div class="score-bar-lbl">CON</div><div class="score-bar-track"><div class="score-bar-fill bar-c" style="width:${d.conversion_score||0}%"></div></div></div>
+  </div>`;
 }
 
-function filterType(type){
-  ACTIVE_TYPE=type;
-  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.toggle('active',t.dataset.type===type));
-  const list=type==='all'?PRODUCTS:PRODUCTS.filter(p=>p.product_type_id===type);
-  renderDesktop(list); renderMobile(list);
+function buyBtn(p,cls){
+  const url  =p.buy_url  ||`https://www.amazon.com/s?k=${encodeURIComponent((p.brand||'')+' '+(p.product_name||''))}&tag=trendboard05-20`;
+  const label=p.buy_label||'Shop on Amazon';
+  const icon =SOURCE_ICONS[p.buy_source||'amazon']||'🛒';
+  return`<a href="${url}" target="_blank" rel="noopener" class="${cls}">${icon} ${label}</a>`;
 }
 
-function mkChart(id,p){
+function catImg(cat,cls){
+  const e=cat.type_emoji||'✨';
+  if(cat.category_image)
+    return`<div class="${cls}" data-emoji="${e}"><img src="${cat.category_image}" alt="${cat.type_label}" onload="this.style.opacity=1" onerror="const el=this.parentElement;el.innerHTML=el.dataset.emoji" style="opacity:0;transition:opacity .3s"></div>`;
+  return`<div class="${cls}">${e}</div>`;
+}
+
+function prodCardImg(p,emoji){
+  if(p.image_url)
+    return`<img class="prod-card-img" src="${p.image_url}" alt="${p.product_name}" onload="this.style.opacity=1" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'" style="opacity:0;transition:opacity .3s"><div class="prod-card-placeholder" style="display:none">${emoji}</div>`;
+  return`<div class="prod-card-placeholder">${emoji}</div>`;
+}
+
+function attrHTML(p){
+  const a=p.attribution||{};
+  if(!a.pattern_label)return`<div style="font-family:'Space Mono',monospace;font-size:9px;color:#B0A898">No attribution data yet</div>`;
+  const derm=a.has_derm?`<span class="attr-derm-badge">🏥 Derm endorsed</span>`:'';
+  const spark=a.spark_likes>0?`<div class="attr-spark-card"><div class="attr-spark-handle">@${a.spark_handle||'creator'}</div><div class="attr-spark-meta"><strong>${a.spark_label}</strong><br>${Math.round(a.spark_likes/1000)}K likes &middot; ${a.days_since_spark}d ago</div></div>`:'';
+  const wave=a.creators_after_spark>0?`<div class="attr-wave"><strong>${a.creators_after_spark} creators</strong> followed the spark</div>`:'';
+  return`<div class="l1-attr-label">Attribution ${derm}</div>${spark}${wave}<div class="attr-pattern-badge ${a.pattern||''}">${a.pattern_label}</div><div style="margin-top:8px;font-family:'Space Mono',monospace;font-size:8px;color:#7A7068">${Math.round((a.organic_ratio||0)*100)}% organic signal</div>`;
+}
+
+function mkChart(id,ts,rank,vel){
   const canvas=document.getElementById(id); if(!canvas)return;
   if(charts[id])charts[id].destroy();
-  const end=Math.round(p.final_ts); const seed=p.rank;
+  const end=Math.round(ts); const seed=rank||1;
   const data=Array.from({length:7},(_,i)=>Math.max(5,Math.min(100,Math.round(end*(0.28+0.11*i)+((seed*i)%9)-4))));
   data[6]=end;
   charts[id]=new Chart(canvas,{type:'line',data:{
@@ -364,214 +347,156 @@ function mkChart(id,p){
     datasets:[{data,borderColor:'#7C9A7E',borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0.4,fill:true,
       backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);g.addColorStop(0,'rgba(124,154,126,0.18)');g.addColorStop(1,'rgba(124,154,126,0)');return g}}]
   },options:{responsive:true,maintainAspectRatio:false,animation:false,
-    plugins:{legend:{display:false},tooltip:{backgroundColor:'#FFFFFF',titleColor:'#7A7068',bodyColor:'#2C2420',
-      borderColor:'#E8E3DC',borderWidth:1,
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#FFFFFF',titleColor:'#7A7068',bodyColor:'#2C2420',borderColor:'#E8E3DC',borderWidth:1,
       titleFont:{family:'Space Mono',size:9},bodyFont:{family:'Space Mono',size:10,weight:'bold'},
       callbacks:{title:i=>i[0].label,label:i=>`TS ${i.raw}`}}},
     scales:{x:{grid:{color:'#EEE9E2'},ticks:{color:'#B0A898',font:{family:'Space Mono',size:8}}},
       y:{min:0,max:100,grid:{color:'#EEE9E2'},ticks:{color:'#B0A898',font:{family:'Space Mono',size:8},stepSize:25}}}}});
 }
 
-function tags(p){
-  const t=[];
-  if(p.unique_creators>150)t.push(`<span class="social-tag tag-tiktok">TikTok ${p.unique_creators}+ creators</span>`);
-  if(p.attribution&&p.attribution.has_derm)t.push(`<span class="social-tag tag-google">\u{1F3E5} Derm endorsed</span>`);
-  if(p.attribution&&p.attribution.organic_ratio>=0.85)t.push(`<span class="social-tag tag-ig">Organic</span>`);
-  if((p.sponsored_count||0)>(p.organic_count||0))t.push(`<span class="sponsored-tag">★ Sponsored</span>`);
-  return t.join('');
-}
-
-// Buy button — renders correct label, icon, and href per product
-const SOURCE_ICONS={amazon:"🛒", brand:"🔗", sephora:"🖤", ulta:"💄"};
-function buyBtn(p, cls){
-  const url   = p.buy_url   || `https://www.amazon.com/s?k=${encodeURIComponent((p.brand||'')+' '+(p.product_name||''))}&tag=trendboard05-20`;
-  const label = p.buy_label || "Shop on Amazon";
-  const icon  = SOURCE_ICONS[p.buy_source||'amazon']||'🛒';
-  return `<a href="${url}" target="_blank" rel="noopener" class="${cls}">${icon} ${label}</a>`;
-}
-
-function mv(p){
-  if(p.state==='NEW_ENTRY')return{t:'NEW',c:'new-e'};
-  if(p.state==='HIGH_FLYER')return{t:'▲ Hot',c:'up'};
-  if(p.state==='COOLING'||p.state==='FALLING_STAR')return{t:'▼',c:'down'};
-  return{t:'—',c:'flat'};
-}
-
-function scoreBars(p){
-  return `<div class="score-bars">
-    <div class="score-bar-item"><div class="score-bar-lbl">VEL</div><div class="score-bar-track"><div class="score-bar-fill bar-v" style="width:${p.velocity_score||0}%"></div></div></div>
-    <div class="score-bar-item"><div class="score-bar-lbl">DEN</div><div class="score-bar-track"><div class="score-bar-fill bar-d" style="width:${p.density_score||0}%"></div></div></div>
-    <div class="score-bar-item"><div class="score-bar-lbl">SEN</div><div class="score-bar-track"><div class="score-bar-fill bar-s" style="width:${p.sentiment_score||0}%"></div></div></div>
-    <div class="score-bar-item"><div class="score-bar-lbl">CON</div><div class="score-bar-track"><div class="score-bar-fill bar-c" style="width:${p.conversion_score||0}%"></div></div></div>
-  </div>`;
-}
-
-function attrHTML(p){
-  const a=p.attribution||{};
-  if(!a.pattern_label)return`<div style="font-family:'Space Mono',monospace;font-size:9px;color:#B0A898">No attribution data yet</div>`;
-  const derm=a.has_derm?`<span class="attr-derm-badge">\u{1F3E5} Derm endorsed</span>`:'';
-  const spark=a.spark_followers>0?`<div class="attr-spark-card">
-    <div class="attr-spark-handle">@${a.spark_handle||'unknown'}</div>
-    <div class="attr-spark-meta"><strong>${a.spark_label}</strong><br>${a.spark_likes>0?`<strong>${Math.round(a.spark_likes/1000)}K likes</strong> &middot; `:``}${a.days_since_spark}d ago</div>
-  </div>`:'';
-  const wave=a.creators_after_spark>0?`<div class="attr-wave"><strong>${a.creators_after_spark} creators</strong> posted after the spark</div>`:'';
-  return`<div class="l1-attr-label">Attribution ${derm}</div>${spark}${wave}<div class="attr-pattern-badge ${a.pattern||''}">${a.pattern_label}</div>
-  <div style="margin-top:8px;font-family:'Space Mono',monospace;font-size:8px;color:#5a5550">${Math.round((a.organic_ratio||0)*100)}% organic &middot; ${p.unique_creators} unique creators</div>`;
-}
-
-function togL1(i){
-  const sum=document.getElementById(`dsum-${i}`);
-  const l1=document.getElementById(`dl1-${i}`);
-  const l2t=document.getElementById(`dl2trig-${i}`);
-  const btn=document.getElementById(`dexpbtn-${i}`);
-  const open=l1.classList.contains('open');
-  document.querySelectorAll('.l1-panel,.l2-trigger-row,.l2-panel').forEach(e=>e.classList.remove('open'));
-  document.querySelectorAll('.expand-btn').forEach(b=>b.classList.remove('open'));
-  if(!open){l1.classList.add('open');l2t.classList.add('open');btn.classList.add('open');setTimeout(()=>mkChart(`dc${i}`,sum._p),50);}
-}
-function togL2(i){
-  const btn=document.getElementById(`dl2btn-${i}`);
-  const panel=document.getElementById(`dl2-${i}`);
-  const open=panel.classList.contains('open');
-  document.querySelectorAll('.l2-panel').forEach(e=>e.classList.remove('open'));
-  document.querySelectorAll('.l2-btn').forEach(b=>b.classList.remove('open'));
-  if(!open){panel.classList.add('open');btn.classList.add('open');}
-}
-function mTogL1(i){
-  const sum=document.getElementById(`msum-${i}`);
-  const l1=document.getElementById(`ml1-${i}`);
-  const l2t=document.getElementById(`ml2trig-${i}`);
-  const open=l1.classList.contains('open');
-  document.querySelectorAll('.m-l1-panel,.m-l2-trigger').forEach(e=>e.classList.remove('open'));
-  document.querySelectorAll('.m-summary').forEach(e=>e.classList.remove('open'));
-  if(!open){l1.classList.add('open');l2t.classList.add('open');sum.classList.add('open');setTimeout(()=>mkChart(`mc${i}`,sum._p),50);}
-}
-function mTogL2(i){
-  const p=document.getElementById(`ml2-${i}`);
-  const open=p.classList.contains('open');
-  document.querySelectorAll('.m-l2-panel').forEach(e=>e.classList.remove('open'));
-  if(!open)p.classList.add('open');
-}
-
-function renderDesktop(products){
+// ── DESKTOP RENDER ───────────────────────────────────────────────────────────
+function renderDesktop(cats){
   const c=document.getElementById('desktop-rows'); c.innerHTML='';
-  if(!products.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">\u{1F50D}</div><div class="empty-text">No products in this category yet</div></div>';return;}
-  products.forEach((p,i)=>{
-    const m=mv(p); const isSp=(p.sponsored_count||0)>(p.organic_count||0);
+  if(!cats.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">No categories yet</div></div>';return;}
+  cats.forEach((cat,i)=>{
     const el=document.createElement('div');
-    el.className='product-row'+(isSp?' sponsored':'');
+    el.className='cat-row';
+    const prods=(cat.products||[]);
     el.innerHTML=`
       <div class="row-summary" id="dsum-${i}" onclick="togL1(${i})">
-        <div><div class="rank-num">#${p.rank}</div><div class="rank-move ${m.c}">${m.t}</div></div>
-        <div class="prod-img" data-emoji="${p.product_type_emoji||'✨'}">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onload="this.style.opacity=1" onerror="const el=this.parentElement;el.innerHTML=el.dataset.emoji" style="opacity:0;transition:opacity .3s">`:p.product_type_emoji||'✨'}</div>
+        <div class="rank-num">#${cat.rank}</div>
+        ${catImg(cat,'cat-img')}
         <div class="name-block">
-          <div class="product-name">${p.product_name}</div>
-          <div class="product-type-line">
-            <span class="product-type-label">${p.product_type_label||p.category||''}</span>
-            <span class="state-badge state-${p.state}">${STATE_LABELS[p.state]||p.state}</span>
+          <div class="cat-name">${cat.type_label}</div>
+          <div class="cat-meta">
+            <span class="state-badge state-${cat.state}">${STATE_LABELS[cat.state]||cat.state}</span>
+            <span class="cat-count">${cat.product_count} product${cat.product_count!==1?'s':''} trending</span>
           </div>
-          <div class="row-tags">${tags(p)}</div>
-          ${scoreBars(p)}
+          ${scoreBars(cat)}
         </div>
         <div class="ts-block">
-          <div class="ts-score">${Math.round(p.final_ts||0)}</div>
-          <div class="ts-label">Trend Score</div>
-          <div class="ts-bar"><div class="ts-bar-fill" style="width:${p.final_ts||0}%"></div></div>
+          <div class="ts-score">${Math.round(cat.category_ts||0)}</div>
+          <div class="ts-label">Category Score</div>
+          <div class="ts-bar"><div class="ts-bar-fill" style="width:${cat.category_ts||0}%"></div></div>
         </div>
         <div style="text-align:right;padding-left:16px">
-          <button class="expand-btn" id="dexpbtn-${i}" onclick="event.stopPropagation();togL1(${i})">Data + Why <span class="chevron">↓</span></button>
+          <button class="expand-btn" id="dexpbtn-${i}" onclick="event.stopPropagation();togL1(${i})">
+            ${prods.length} Product${prods.length!==1?'s':''} <span class="chevron">↓</span>
+          </button>
         </div>
       </div>
       <div class="l1-panel" id="dl1-${i}">
-        <div class="l1-inner">
+        <div class="prod-grid-header">TOP ${cat.type_label.toUpperCase()} THIS WEEK</div>
+        <div class="prod-grid">
+          ${prods.map((p,pi)=>`
+            <div class="prod-card">
+              ${prodCardImg(p,cat.type_emoji||'✨')}
+              <div class="prod-card-body">
+                <div class="prod-card-pos">#${pi+1} in ${cat.type_label}</div>
+                <div class="prod-card-name">${p.product_name}</div>
+                <div class="prod-card-brand">${(p.brand||'').toUpperCase()}</div>
+                <div class="prod-card-ts">TS ${Math.round(p.final_ts||0)}</div>
+                <div style="margin-bottom:8px"><span class="state-badge state-${p.state}" style="font-size:7px">${STATE_LABELS[p.state]||p.state}</span></div>
+                ${buyBtn(p,'prod-card-buy')}
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="cat-why-strip">
+          <div class="cat-why-text">"${cat.why_trending||'—'}"</div>
+          <div class="cat-why-srcs">
+            <span class="src-chip src-tiktok">TikTok</span>
+            <span class="src-chip src-google">Google</span>
+          </div>
+          <button class="trend-data-btn" id="tdatabtn-${i}" onclick="event.stopPropagation();togData(${i})">Trend Data <span class="chevron">↓</span></button>
+        </div>
+        <div class="l1-analytics" id="dl1a-${i}">
           <div class="l1-chart-section">
-            <div class="l1-chart-header"><span class="l1-chart-lbl">Trend Score &middot; Nov '25 &ndash; May '26</span><span class="l1-chart-growth">${Math.round(p.velocity_score||0)}/100 velocity</span></div>
-            <div class="l1-chart-wrap"><canvas id="dc${i}"></canvas></div>
-            <div class="l1-chart-note">Modeled from scoring data &middot; hover for values</div>
-          </div>
-          <div class="l1-why-section">
-            <div class="l1-why-label">Why it's trending</div>
-            <div class="l1-why-text">${p.why_trending||'&mdash;'}</div>
-            <div class="l1-why-srcs">
-              <span class="src-chip src-tiktok">TikTok</span>
-              <span class="src-chip src-google">Google</span>
-              ${p.attribution&&p.attribution.has_derm?'<span class="src-chip src-ig">Derm</span>':''}
+            <div class="l1-chart-header">
+              <span class="l1-chart-lbl">Category Score &middot; Nov '25–May '26</span>
+              <span class="l1-chart-growth">${Math.round(cat.velocity_score||0)}/100 velocity</span>
             </div>
+            <div class="l1-chart-wrap"><canvas id="dc${i}"></canvas></div>
           </div>
-          <div class="l1-attribution">${attrHTML(p)}</div>
+          <div class="l1-attribution">${prods.length?attrHTML(prods[0]):''}</div>
         </div>
-      </div>
-      <div class="l2-trigger-row" id="dl2trig-${i}">
-        <button class="l2-btn" id="dl2btn-${i}" onclick="togL2(${i})">Top Shopping Options <span class="chevron">↓</span></button>
-      </div>
-      <div class="l2-panel" id="dl2-${i}">
-        <div class="l2-title">Top options &middot; ${p.product_type_label||''} &middot; "${p.product_name}"</div>
-        <div class="options-grid">
-          <div class="option-card is-trending">
-            <div class="opt-badge badge-trending">↑ #1 Searched</div>
-            ${p.image_url?`<div style="width:100%;height:140px;border-radius:10px;overflow:hidden;margin:10px 0"><img src="${p.image_url}" alt="${p.product_name}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>`:''}
-            <div class="opt-name">${p.product_name}</div>
-            <div class="opt-brand">${(p.brand||'').toUpperCase()}</div>
-            <div class="opt-price">&mdash;</div>
-            <div class="opt-rating" style="font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin:6px 0">↑ Highest organic search momentum</div>
-            ${buyBtn(p,'opt-buy')}
-          </div>
-        </div>
-        <div class="l2-disclaimer">★ Sponsored = paid placement &middot; ↑ Trending = highest organic search momentum &middot; Rank is always data, never payment.</div>
       </div>`;
-    el.querySelector(`#dsum-${i}`)._p=p;
     c.appendChild(el);
   });
 }
 
-function renderMobile(products){
+function togL1(i){
+  const l1=document.getElementById(`dl1-${i}`);
+  const btn=document.getElementById(`dexpbtn-${i}`);
+  const open=l1.classList.contains('open');
+  document.querySelectorAll('.l1-panel').forEach(e=>e.classList.remove('open'));
+  document.querySelectorAll('.expand-btn').forEach(b=>b.classList.remove('open'));
+  document.querySelectorAll('.l1-analytics').forEach(e=>e.classList.remove('open'));
+  document.querySelectorAll('.trend-data-btn').forEach(b=>b.classList.remove('open'));
+  if(!open){l1.classList.add('open');btn.classList.add('open');}
+}
+
+function togData(i){
+  const panel=document.getElementById(`dl1a-${i}`);
+  const btn=document.getElementById(`tdatabtn-${i}`);
+  const open=panel.classList.contains('open');
+  if(open){panel.classList.remove('open');btn.classList.remove('open');}
+  else{
+    panel.classList.add('open');btn.classList.add('open');
+    const cat=CATEGORIES[i];
+    if(cat)setTimeout(()=>mkChart(`dc${i}`,cat.category_ts,cat.rank,cat.velocity_score),50);
+  }
+}
+
+// ── MOBILE RENDER ─────────────────────────────────────────────────────────────
+function renderMobile(cats){
   const c=document.getElementById('mobile-cards'); c.innerHTML='';
-  products.forEach((p,i)=>{
-    const m=mv(p); const a=p.attribution||{};
-    const isSp=(p.sponsored_count||0)>(p.organic_count||0);
+  cats.forEach((cat,i)=>{
     const el=document.createElement('div');
-    el.className='m-card'+(isSp?' sponsored':'');
+    el.className='m-card';
+    const prods=cat.products||[];
     el.innerHTML=`
       <div class="m-summary" id="msum-${i}" onclick="mTogL1(${i})">
-        <div><div class="m-rank-num">#${p.rank}</div><div class="m-rank-move ${m.c}">${m.t}</div></div>
-        <div class="m-img" data-emoji="${p.product_type_emoji||'✨'}">${p.image_url?`<img src="${p.image_url}" alt="${p.product_name}" onload="this.style.opacity=1" onerror="const el=this.parentElement;el.innerHTML=el.dataset.emoji" style="opacity:0;transition:opacity .3s">`:p.product_type_emoji||'✨'}</div>
+        <div class="m-rank-num">#${cat.rank}</div>
+        ${catImg(cat,'m-img')}
         <div class="m-info">
-          <div class="m-name">${p.product_name}</div>
-          <div class="m-type">${p.product_type_label||''}</div>
-          <div class="m-tags">${tags(p)}</div>
+          <div class="m-name">${cat.type_label}</div>
+          <div class="m-type">${cat.product_count} product${cat.product_count!==1?'s':''} trending</div>
+          <div style="margin-top:4px"><span class="state-badge state-${cat.state}" style="font-size:7px;padding:1px 6px">${STATE_LABELS[cat.state]||cat.state}</span></div>
         </div>
-        <div class="m-right"><div class="m-ts">${Math.round(p.final_ts||0)}</div><div class="m-ts-lbl">score</div><span class="m-chevron">↓</span></div>
+        <div class="m-right">
+          <div class="m-ts">${Math.round(cat.category_ts||0)}</div>
+          <div class="m-ts-lbl">score</div>
+          <span class="m-chevron">↓</span>
+        </div>
       </div>
       <div class="m-l1-panel" id="ml1-${i}">
-        <div class="m-chart-box">
-          <div class="m-chart-top"><span class="m-chart-lbl">Trend Score &middot; Nov '25&ndash;May '26</span><span class="m-chart-growth">${Math.round(p.velocity_score||0)} velocity</span></div>
-          <div class="m-chart-wrap"><canvas id="mc${i}"></canvas></div>
+        <div class="m-prod-list">
+          ${prods.map((p,pi)=>`
+            <div class="m-prod-item">
+              ${p.image_url?`<img class="m-prod-item-img" src="${p.image_url}" alt="${p.product_name}" onerror="this.style.display='none'">`:`<div class="m-prod-item-img" style="display:flex;align-items:center;justify-content:center;font-size:22px">${cat.type_emoji||'✨'}</div>`}
+              <div class="m-prod-item-info">
+                <div class="m-prod-item-pos">#${pi+1} in ${cat.type_label}</div>
+                <div class="m-prod-item-name">${p.product_name}</div>
+                <div class="m-prod-item-brand">${(p.brand||'').toUpperCase()}</div>
+                ${buyBtn(p,'m-prod-item-buy')}
+              </div>
+            </div>`).join('')}
         </div>
         <div class="m-why-box">
-          <div class="m-why-label">Why it's trending</div>
-          <div class="m-why-text">${p.why_trending||'&mdash;'}</div>
-          ${a.spark_label?`<div class="m-attr-row">Spark: <strong>${a.spark_label}</strong></div>`:''}
-          ${a.creators_after_spark>0?`<div class="m-attr-row"><strong>${a.creators_after_spark} creators</strong> followed</div>`:''}
-          ${a.pattern_label?`<div class="m-attr-row">${a.pattern_label}</div>`:''}
+          <div class="m-why-text">"${cat.why_trending||'—'}"</div>
         </div>
-      </div>
-      <div class="m-l2-trigger" id="ml2trig-${i}">
-        <button class="m-l2-btn" onclick="mTogL2(${i})">Top Shopping Options ↓</button>
-      </div>
-      <div class="m-l2-panel" id="ml2-${i}">
-        <div class="m-opt is-trending">
-          <div class="m-opt-left">
-            <div class="opt-badge badge-trending">↑ #1 Searched</div>
-            <div style="font-size:12px;font-weight:700;color:#2C2420;margin-bottom:2px">${p.product_name}</div>
-            <div style="font-family:'Space Mono',monospace;font-size:7px;color:#7A7068">${(p.brand||'').toUpperCase()}</div>
-          </div>
-          <div class="m-opt-right">${buyBtn(p,'m-opt-buy')}</div>
-        </div>
-        <div style="font-family:'Space Mono',monospace;font-size:8px;color:#B0A898;margin-top:8px">★ Rank is always data, never payment.</div>
       </div>`;
-    el.querySelector(`#msum-${i}`)._p=p;
     c.appendChild(el);
   });
+}
+
+function mTogL1(i){
+  const panel=document.getElementById(`ml1-${i}`);
+  const sum=document.getElementById(`msum-${i}`);
+  const open=panel.classList.contains('open');
+  document.querySelectorAll('.m-l1-panel').forEach(e=>e.classList.remove('open'));
+  document.querySelectorAll('.m-summary').forEach(e=>e.classList.remove('open'));
+  if(!open){panel.classList.add('open');sum.classList.add('open');}
 }
 
 loadData();

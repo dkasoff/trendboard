@@ -193,6 +193,23 @@ def fetch_category_image(type_id: str, type_label: str) -> str:
     return url
 
 
+def enrich_categories_with_images(categories: list[dict]) -> list[dict]:
+    """
+    Adds category_image to each ranked category dict.
+    Uses lifestyle/flatlay images — not branded product shots.
+    """
+    logger.info(f"\n  Fetching category images ({len(categories)} categories)…")
+    for cat in categories:
+        if cat.get("category_image"):
+            continue
+        type_id    = cat.get("type_id", "")
+        type_label = cat.get("type_label", "")
+        url = fetch_category_image(type_id, type_label)
+        cat["category_image"] = url
+        logger.info(f"  {type_label} → {'✓' if url else '✗'}")
+    return categories
+
+
 def enrich_products_with_images(products: list[dict]) -> list[dict]:
     """
     Takes the ranked top-25 product list and adds image_url to each.

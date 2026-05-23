@@ -37,7 +37,7 @@ from safety      import guard, is_test_mode, status as safety_status, COST_ESTIM
 from discovery   import DiscoveryScraper
 from extractor   import ProductExtractor, ProductCandidate
 from attribution    import build_attribution, generate_story
-from image_fetcher  import enrich_products_with_images
+from image_fetcher  import enrich_products_with_images, enrich_categories_with_images
 from buy_links      import enrich_products_with_buy_links
 from scorer import (
     GoogleSignal, TikTokSignal, InstagramSignal, RedditSignal,
@@ -182,19 +182,126 @@ def generate_why_trending(product_name: str, score, candidate: ProductCandidate)
     return generate_story(attr, score)
 
 
-# ─── SUPABASE WRITER ─────────────────────────────────────────────────────────
+# ─── BILLBOARD JSON BUILDER ──────────────────────────────────────────────────
 
-def write_to_supabase(ranked_scores: list, descriptions: dict,
-                       candidates: dict, run_date: date,
-                       image_map: dict = None):
-    """Writes the skincare billboard to Supabase."""
+def _build_billboard_json(ranked_scores, descriptions, candidates, run_date,
+                           image_map: dict = None) -> dict:
+    """
+    Builds the category-first billboard JSON.
+
+    Structure:
+      ranked_categories: [
+        { rank, type_id, type_label, type_emoji, category_ts, state,
+          why_trending, velocity_score, …, category_image, product_count,
+          products: [ {product_id, product_name, brand, final_ts, image_url,
+                       buy_url, buy_label, buy_source, attribution, …} ] }
+      ]
+
+    Category score = weighted blend of product TS scores in that category.
+    Products within each category are ranked by individual final_ts.
+    """
+    from collections import defaultdict
     image_map = image_map or {}
 
+    product_by_type = defaultdict(list)
+    type_meta       = {}   # type_id → {type_label, type_emoji}
+
+    for score in ranked_scores:
+        c          = candidates.get(score.product_id)
+        type_id    = (c.product_type_id    if c else "") or "other"
+        type_label = (c.product_type_label if c else "") or "Other"
+        type_emoji = (c.product_type_emoji if c else "") or "✨"
+        type_meta[type_id] = {"type_label": type_label, "type_emoji": type_emoji}
+
+        img_data = image_map.get(score.product_id, {})
+        attr     = build_attribution(c) if c else None
+
+        product_by_type[type_id].append({
+            "product_id":        score.product_id,
+            "product_name":      score.product_name,
+            "brand":             c.brand if c else "",
+            "final_ts":          score.final_ts,
+            "velocity_score":    score.velocity_score,
+            "density_score":     score.density_score,
+            "sentiment_score":   score.sentiment_score,
+            "conversion_score":  score.conversion_score,
+            "state":             score.state,
+            "unique_creators":   c.unique_creator_count if c else 0,
+            "sponsored_count":   getattr(c, "sponsored_count", 0) if c else 0,
+            "organic_count":     getattr(c, "organic_count",   0) if c else 0,
+            "platforms_present": score.platforms_present,
+            "image_url":         img_data.get("image_url",  ""),
+            "buy_url":           img_data.get("buy_url",    ""),
+            "buy_source":        img_data.get("buy_source", "amazon"),
+            "buy_label":         img_data.get("buy_label",  "Shop on Amazon"),
+            "attribution": {
+                "spark_handle":         attr.spark_handle          if attr else "",
+                "spark_label":          attr.spark_label           if attr else "",
+                "spark_followers":      attr.spark_followers        if attr else 0,
+                "spark_likes":          attr.spark_likes            if attr else 0,
+                "days_since_spark":     attr.days_since_spark       if attr else 0,
+                "creators_after_spark": attr.creators_after_spark   if attr else 0,
+                "pattern":              attr.pattern                if attr else "",
+                "pattern_label":        attr.pattern_label          if attr else "",
+                "organic_ratio":        attr.organic_ratio          if attr else 0,
+                "has_derm":             attr.has_derm_endorsement   if attr else False,
+            } if attr else {},
+        })
+
+    # ── Build category entries ────────────────────────────────────────────────
+    ranked_categories = []
+    for type_id, products in product_by_type.items():
+        products.sort(key=lambda p: p["final_ts"], reverse=True)
+        top      = products[0]
+        ts_vals  = [p["final_ts"] for p in products]
+        top3     = products[:3]
+
+        # Weighted category TS: top product dominates, others add density bonus
+        if   len(ts_vals) == 1: cat_ts = ts_vals[0]
+        elif len(ts_vals) == 2: cat_ts = ts_vals[0] * 0.65 + ts_vals[1] * 0.35
+        else:
+            cat_ts = (ts_vals[0] * 0.50 +
+                      ts_vals[1] * 0.30 +
+                      sum(ts_vals[2:5]) / min(len(ts_vals[2:5]), 3) * 0.20)
+
+        def avg(key): return round(sum(p[key] for p in top3) / len(top3), 1)
+
+        ranked_categories.append({
+            "type_id":         type_id,
+            "type_label":      type_meta[type_id]["type_label"],
+            "type_emoji":      type_meta[type_id]["type_emoji"],
+            "category_ts":     round(cat_ts, 1),
+            "velocity_score":  avg("velocity_score"),
+            "density_score":   avg("density_score"),
+            "sentiment_score": avg("sentiment_score"),
+            "conversion_score":avg("conversion_score"),
+            "state":           top["state"],
+            "why_trending":    descriptions.get(top["product_id"], ""),
+            "product_count":   len(products),
+            "category_image":  "",   # filled by enrich_categories_with_images()
+            "products":        products[:5],
+        })
+
+    ranked_categories.sort(key=lambda c: c["category_ts"], reverse=True)
+    for i, cat in enumerate(ranked_categories, 1):
+        cat["rank"] = i
+
+    return {
+        "run_date":         run_date.isoformat(),
+        "chart":            "Skincare & Beauty",
+        "total_categories": len(ranked_categories),
+        "ranked_categories": ranked_categories,
+    }
+
+
+# ─── SUPABASE WRITER ─────────────────────────────────────────────────────────
+
+def write_billboard(billboard_data: dict, run_date: date):
+    """Writes the final billboard dict to JSON and optionally Supabase."""
     if not CONFIG["supabase_url"] or not CONFIG["supabase_key"]:
-        logger.info("  No Supabase config — writing to skincare_billboard.json instead")
-        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date, image_map)
+        logger.info("  No Supabase config — writing to skincare_billboard.json")
         with open("skincare_billboard.json", "w") as f:
-            json.dump(output, f, indent=2)
+            json.dump(billboard_data, f, indent=2)
         logger.info("  ✓ Written to skincare_billboard.json")
         return
 
@@ -202,100 +309,32 @@ def write_to_supabase(ranked_scores: list, descriptions: dict,
         from supabase import create_client
         db = create_client(CONFIG["supabase_url"], CONFIG["supabase_key"])
 
-        # Upsert products
-        products = [
-            {"id": s.product_id, "name": s.product_name, "category": s.category}
-            for s in ranked_scores
-        ]
-        db.table("products").upsert(products).execute()
-
-        # Write billboard
-        billboard_data = _build_billboard_json(
-            ranked_scores, descriptions, candidates, run_date, image_map
-        )
         db.table("billboard").upsert({
             "run_date": run_date.isoformat(),
-            "data":     billboard_data
+            "data":     billboard_data,
         }).execute()
 
-        # Write TS history
-        history_rows = [
-            {
-                "product_id": s.product_id,
-                "run_date":   run_date.isoformat(),
-                "final_ts":   s.final_ts,
-                "state":      s.state,
-            }
-            for s in ranked_scores
-        ]
-        db.table("ts_history").upsert(history_rows).execute()
+        # TS history: flatten products back out from categories
+        history_rows = []
+        for cat in billboard_data.get("ranked_categories", []):
+            for p in cat.get("products", []):
+                history_rows.append({
+                    "product_id": p["product_id"],
+                    "run_date":   run_date.isoformat(),
+                    "final_ts":   p["final_ts"],
+                    "state":      p["state"],
+                    "type_id":    cat["type_id"],
+                })
+        if history_rows:
+            db.table("ts_history").upsert(history_rows).execute()
 
         logger.info("  ✓ All data written to Supabase")
 
     except Exception as e:
         logger.error(f"  Supabase write failed: {e}")
-        # Fallback to JSON
-        output = _build_billboard_json(ranked_scores, descriptions, candidates, run_date, image_map)
         with open("skincare_billboard.json", "w") as f:
-            json.dump(output, f, indent=2)
+            json.dump(billboard_data, f, indent=2)
         logger.info("  ✓ Fallback: written to skincare_billboard.json")
-
-
-def _build_billboard_json(ranked_scores, descriptions, candidates, run_date,
-                           image_map: dict = None) -> dict:
-    image_map = image_map or {}
-    result = {
-        "run_date":              run_date.isoformat(),
-        "chart":                 "Skincare & Beauty",
-        "total_products_scored": len(ranked_scores),
-        "ranked_scores":         [],
-        "new_entries":           [s.product_id for s in ranked_scores if s.state == "NEW_ENTRY"],
-        "high_flyers":           [s.product_id for s in ranked_scores if s.state == "HIGH_FLYER"],
-        "falling_stars":         [s.product_id for s in ranked_scores if s.state == "FALLING_STAR"],
-        "cooling":               [s.product_id for s in ranked_scores if s.state == "COOLING"],
-    }
-    for rank, score in enumerate(ranked_scores, 1):
-        c    = candidates.get(score.product_id)
-        attr = build_attribution(c) if c else None
-        result["ranked_scores"].append({
-            "rank":              rank,
-            "product_id":        score.product_id,
-            "product_name":      score.product_name,
-            "category":          score.category,
-            "final_ts":          score.final_ts,
-            "velocity_score":    score.velocity_score,
-            "density_score":     score.density_score,
-            "sentiment_score":   score.sentiment_score,
-            "conversion_score":  score.conversion_score,
-            "state":             score.state,
-            "lifecycle_stage":   score.lifecycle_stage,
-            "platforms_present": score.platforms_present,
-            "why_trending":      descriptions.get(score.product_id, ""),
-            "unique_creators":   c.unique_creator_count if c else 0,
-            "brand":             c.brand if c else "",
-            "product_type":      c.product_type if c else "",
-            "product_type_id":   c.product_type_id if c else "",
-            "product_type_label": c.product_type_label if c else "",
-            "product_type_emoji": c.product_type_emoji if c else "",
-            "image_url":         image_map.get(score.product_id, {}).get("image_url", ""),
-            "buy_url":           image_map.get(score.product_id, {}).get("buy_url", ""),
-            "buy_source":        image_map.get(score.product_id, {}).get("buy_source", "amazon"),
-            "buy_label":         image_map.get(score.product_id, {}).get("buy_label", "Shop on Amazon"),
-            # Attribution data for UI
-            "attribution": {
-                "spark_handle":    attr.spark_handle if attr else "",
-                "spark_label":     attr.spark_label if attr else "",
-                "spark_followers": attr.spark_followers if attr else 0,
-                "spark_likes":     attr.spark_likes if attr else 0,
-                "days_since_spark": attr.days_since_spark if attr else 0,
-                "creators_after_spark": attr.creators_after_spark if attr else 0,
-                "pattern":         attr.pattern if attr else "",
-                "pattern_label":   attr.pattern_label if attr else "",
-                "organic_ratio":   attr.organic_ratio if attr else 0,
-                "has_derm":        attr.has_derm_endorsement if attr else False,
-            } if attr else {},
-        })
-    return result
 
 
 # ─── MAIN PIPELINE ───────────────────────────────────────────────────────────
@@ -406,10 +445,17 @@ def run():
     logger.info("\n[5c/7] Resolving buy links...")
     enrich_products_with_buy_links(list(_image_map.values()))
 
-    # ── STEP 7: Write to Supabase ─────────────────────────────────────────────
-    logger.info("\n[6/7] Writing to database...")
-    write_to_supabase(ranked, descriptions, candidate_dict, run_date,
-                      image_map=_image_map)
+    # ── STEP 6: Build category-first billboard JSON ───────────────────────────
+    logger.info("\n[6/7] Building category billboard...")
+    billboard_data = _build_billboard_json(ranked, descriptions, candidate_dict,
+                                           run_date, _image_map)
+
+    # Fetch category lifestyle images (one per unique product type)
+    enrich_categories_with_images(billboard_data["ranked_categories"])
+
+    # ── STEP 7: Write ─────────────────────────────────────────────────────────
+    logger.info("\n[7/7] Writing to database...")
+    write_billboard(billboard_data, run_date)
 
     # ── SUMMARY ───────────────────────────────────────────────────────────────
     icons = {
@@ -418,20 +464,16 @@ def run():
         "STAPLE":        "📊", "TRENDING":    "📈",
         "BELOW_THRESHOLD": "·"
     }
-
     logger.info(f"\n{'='*65}")
     logger.info(f"  SKINCARE BILLBOARD — {run_date}")
     logger.info(f"{'='*65}")
-    logger.info(f"  {'#':>2}  {'Product':<30}  {'TS':>6}  {'Creators':>8}  State")
-    logger.info(f"  {'─'*2}  {'─'*30}  {'─'*6}  {'─'*8}  {'─'*15}")
-
-    for i, score in enumerate(ranked, 1):
-        icon = icons.get(score.state, "·")
-        c    = candidate_dict.get(score.product_id)
-        creators = c.unique_creator_count if c else 0
+    logger.info(f"  {'#':>2}  {'Category':<22}  {'CatTS':>6}  {'Products':>8}  State")
+    logger.info(f"  {'─'*2}  {'─'*22}  {'─'*6}  {'─'*8}  {'─'*15}")
+    for cat in billboard_data["ranked_categories"]:
+        icon = icons.get(cat["state"], "·")
         logger.info(
-            f"  {icon}#{i:<2}  {score.product_name:<30}  "
-            f"{score.final_ts:>6.1f}  {creators:>8}  {score.state}"
+            f"  {icon}#{cat['rank']:<2}  {cat['type_label']:<22}  "
+            f"{cat['category_ts']:>6.1f}  {cat['product_count']:>8}  {cat['state']}"
         )
 
     logger.info(f"\n  Data sources this run:")
