@@ -110,6 +110,28 @@ _DDG_HEADERS = {
     "Referer":         "https://duckduckgo.com/",
 }
 
+# Retailer domains to prefer when picking image results.
+# Results whose *page* URL comes from these domains get priority over
+# random blogs, Pinterest, Reddit, etc.
+_PREFERRED_DOMAINS = (
+    "amazon.com", "sephora.com", "ulta.com", "target.com",
+    "walmart.com", "dermstore.com", "lookfantastic.com",
+    "cerave.com", "neutrogena.com", "laroche-posay.com",
+    "theordinary.com", "paulaschoice.com", "cosrx.com",
+)
+
+def _wsrv(image_url: str) -> str:
+    """Wrap an image URL in wsrv.nl proxy. Handles encoding correctly."""
+    params = urllib.parse.urlencode({
+        "url":    image_url,
+        "w":      300,
+        "h":      300,
+        "fit":    "cover",
+        "output": "webp",
+    })
+    return f"https://wsrv.nl/?{params}"
+
+
 def _ddg_image_search(query: str, fallback_query: str = "") -> str:
     """
     Searches DuckDuckGo Images for a product photo.
@@ -118,7 +140,8 @@ def _ddg_image_search(query: str, fallback_query: str = "") -> str:
     Flow:
       1. GET duckduckgo.com/?q=... → extract the session token (vqd)
       2. GET duckduckgo.com/i.js?q=...&vqd=... → JSON image results
-      3. Pick first HTTPS result, proxy through wsrv.nl
+      3. Prefer results from known retailer domains; fall back to any HTTPS image
+      4. Proxy final URL through wsrv.nl
     """
     for attempt, q in enumerate([query, fallback_query]):
         if not q:
@@ -131,11 +154,15 @@ def _ddg_image_search(query: str, fallback_query: str = "") -> str:
             with urllib.request.urlopen(req, timeout=12) as resp:
                 html = resp.read().decode("utf-8", errors="replace")
 
-            vqd_match = (_re.search(r'vqd="([^"]+)"', html) or
-                         _re.search(r"vqd='([^']+)'", html) or
-                         _re.search(r'vqd=([\d-]+)', html))
+            # vqd token — try four patterns in order of specificity
+            vqd_match = (
+                _re.search(r'vqd="([^"]+)"',         html) or
+                _re.search(r"vqd='([^']+)'",          html) or
+                _re.search(r'data-vqd="([^"]+)"',     html) or
+                _re.search(r'vqd=([\w\-]+)',           html)   # widened: was [\d-]+
+            )
             if not vqd_match:
-                logger.warning(f"DDG: vqd token not found for '{q}'")
+                logger.warning(f"DDG: vqd token not found for '{q}' — possible bot-challenge page")
                 continue
             vqd = vqd_match.group(1)
 
@@ -156,18 +183,28 @@ def _ddg_image_search(query: str, fallback_query: str = "") -> str:
             with urllib.request.urlopen(img_req, timeout=12) as resp:
                 data = json.loads(resp.read())
 
-            # ── Step 3: pick best HTTPS result ────────────────────────────────
-            for result in data.get("results", [])[:8]:
-                link = result.get("image", "")
-                if link.startswith("https://"):
-                    encoded = urllib.parse.quote(link.replace("https://", ""), safe="")
-                    return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
+            results = data.get("results", [])[:15]
+
+            # ── Step 3a: prefer images from known retailer pages ──────────────
+            for result in results:
+                page_url = result.get("url", "")
+                img_url  = result.get("image", "")
+                if img_url.startswith("https://") and any(d in page_url for d in _PREFERRED_DOMAINS):
+                    logger.debug(f"  DDG: retailer hit — {page_url[:60]}")
+                    return _wsrv(img_url)
+
+            # ── Step 3b: fall back to any HTTPS image ─────────────────────────
+            for result in results:
+                img_url = result.get("image", "")
+                if img_url.startswith("https://"):
+                    logger.debug(f"  DDG: generic hit — {img_url[:60]}")
+                    return _wsrv(img_url)
 
         except Exception as e:
             logger.warning(f"DDG image search error for '{q}': {e}")
 
         if attempt == 0:
-            time.sleep(1.5)   # brief pause before fallback query
+            time.sleep(1.5)   # pause before trying fallback query
 
     return ""
 
@@ -197,14 +234,21 @@ def fetch_product_image(brand: str, product_name: str,
     Returns the best image URL for a specific branded product.
 
     TEST_MODE: returns a hardcoded wsrv.nl URL from TEST_PRODUCT_IMAGES (no API).
-    LIVE_MODE: queries Google CSE (retailer sites) for the exact product shot.
+    LIVE_MODE: searches DuckDuckGo Images — free, no key required.
 
     Args:
         brand:              e.g. "CeraVe"
         product_name:       e.g. "Moisturizing Cream"
         product_type_label: e.g. "Moisturizer" (used in fallback query)
     """
-    full_name = f"{brand} {product_name}".strip()
+    # ── Deduplicate brand prefix ──────────────────────────────────────────────
+    # Guard against product_name already containing the brand
+    # e.g. brand="Foreo", product_name="Foreo Microcurrent Device"
+    # → clean_name="Microcurrent Device" → full_name="Foreo Microcurrent Device"
+    clean_name = product_name.strip()
+    if clean_name.lower().startswith(brand.strip().lower()):
+        clean_name = clean_name[len(brand.strip()):].strip()
+    full_name = f"{brand.strip()} {clean_name}".strip()
 
     # ── TEST MODE ─────────────────────────────────────────────────────────────
     if is_test_mode():
@@ -215,14 +259,14 @@ def fetch_product_image(brand: str, product_name: str,
         return url
 
     # ── LIVE MODE — DuckDuckGo image search ──────────────────────────────────
-    # Primary: exact brand + product (finds the product on Amazon/Sephora/brand site)
-    # Fallback: broader query with product type
-    primary  = f"{full_name} skincare product"
-    fallback = f"{brand} {product_type_label}" if product_type_label else f"{full_name}"
+    # Exclude social/lifestyle sites that dominate generic results
+    exclusions = "-pinterest -reddit -instagram -tumblr"
+    primary  = f"{full_name} skincare product {exclusions}"
+    fallback = f"{full_name} {product_type_label} {exclusions}" if product_type_label else f"{full_name} buy"
 
     logger.info(f"  Fetching product image: {full_name}")
     url = _ddg_image_search(primary, fallback)
-    time.sleep(1.0)     # polite delay between DDG requests
+    time.sleep(1.0)     # polite delay between products
     return url
 
 
