@@ -24,6 +24,43 @@ from dataclasses import dataclass, field
 import taxonomy
 
 
+# ── SMART TITLE CASE ─────────────────────────────────────────────────────────
+# Python's built-in str.title() has two problems for product names:
+#   1. Capitalises after apostrophes → "paula's" → "Paula'S"
+#   2. Doesn't know acronyms        → "bha"     → "Bha" (should be "BHA")
+# This replaces it throughout the extractor.
+
+_ACRONYMS = {
+    "bha", "aha", "pha", "lha",       # chemical exfoliants
+    "spf", "uva", "uvb", "uv",        # sun protection
+    "led",                             # devices
+    "ha",                              # hyaluronic acid (when standalone)
+    "dna", "asc",                      # other abbreviations
+}
+
+def _smart_title(text: str) -> str:
+    """
+    Title-case a brand or product string correctly:
+    - Capitalises first letter of each space-separated word (not after apostrophes)
+      "paula's" → "Paula's"  (not "Paula'S" as str.title() produces)
+    - Capitalises after hyphens: "la roche-posay" → "La Roche-Posay"
+    - Uppercases known skincare acronyms: "bha" → "BHA", "spf" → "SPF"
+    - Leaves numeric tokens untouched: "10%", "96", "+zinc"
+    """
+    def _cap(word: str) -> str:
+        if not word:
+            return word
+        if word.lower() in _ACRONYMS:
+            return word.upper()
+        if not word[0].isalpha():
+            return word                    # "10%", "2%", "+zinc" → unchanged
+        # Capitalise after hyphens only (not apostrophes)
+        parts = word.split("-")
+        return "-".join(p[0].upper() + p[1:] if p else p for p in parts)
+
+    return " ".join(_cap(w) for w in text.split())
+
+
 # ─── BRAND REGISTRY ──────────────────────────────────────────────────────────
 # Organized by tier. Tier 1 = highest signal (derm-recommended or viral).
 # When a Tier 1 brand appears in a caption, it's almost always a product mention.
@@ -254,7 +291,7 @@ class ProductExtractor:
         if brands_found and types_found:
             brand = brands_found[0]
             ptype = types_found[0]
-            display = f"{brand.title()} {ptype.title()}"
+            display = f"{_smart_title(brand)} {_smart_title(ptype)}"
             key = self._normalize_key(display)
             confidence = min(base_confidence + 0.4, 1.0)
             results.append((brand, ptype, display, key, confidence))
@@ -264,7 +301,7 @@ class ProductExtractor:
             brand = brands_found[0]
             # Only keep Tier 1 brands for brand-only extractions
             if brand in BRANDS_TIER1:
-                display = brand.title()
+                display = _smart_title(brand)
                 key = self._normalize_key(display)
                 confidence = min(base_confidence + 0.2, 0.7)
                 results.append((brand, "product", display, key, confidence))
@@ -280,7 +317,7 @@ class ProductExtractor:
                 "lash serum", "scalp serum",
             ]
             if ptype in high_specificity:
-                display = ptype.title()
+                display = _smart_title(ptype)
                 key = self._normalize_key(display)
                 confidence = min(base_confidence + 0.1, 0.5)
                 results.append(("generic", ptype, display, key, confidence))

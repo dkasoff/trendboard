@@ -110,7 +110,7 @@ _DDG_HEADERS = {
     "Referer":         "https://duckduckgo.com/",
 }
 
-# Retailer domains to prefer when picking image results.
+# Retailer page domains to prefer when picking image results.
 # Results whose *page* URL comes from these domains get priority over
 # random blogs, Pinterest, Reddit, etc.
 _PREFERRED_DOMAINS = (
@@ -120,16 +120,31 @@ _PREFERRED_DOMAINS = (
     "theordinary.com", "paulaschoice.com", "cosrx.com",
 )
 
+# Image CDN domains that block third-party proxy requests (wsrv.nl gets 404).
+# These are detected by domain in the *image* URL, not the page URL.
+# We skip results whose image lives on these CDNs and try the next result.
+_BLOCKED_IMAGE_CDNS = (
+    "sephora.com/productimages",   # Sephora CDN — hotlink-blocked
+    "m.media-amazon.com",          # Amazon CDN — hotlink-blocked by wsrv.nl
+    "pinimg.com",                  # Pinterest CDN
+    "fbcdn.net",                   # Facebook/Instagram CDN
+    "cdninstagram.com",            # Instagram CDN
+    "lookaside.fbsbx.com",         # Facebook CDN
+)
+
 def _wsrv(image_url: str) -> str:
-    """Wrap an image URL in wsrv.nl proxy. Handles encoding correctly."""
-    params = urllib.parse.urlencode({
-        "url":    image_url,
-        "w":      300,
-        "h":      300,
-        "fit":    "cover",
-        "output": "webp",
-    })
-    return f"https://wsrv.nl/?{params}"
+    """
+    Wrap an image URL in a wsrv.nl proxy for CORS-safe delivery.
+    wsrv.nl expects the URL *without* the https:// scheme prefix.
+    """
+    bare    = image_url.replace("https://", "").replace("http://", "")
+    encoded = urllib.parse.quote(bare, safe="/:@!$'()*+,;=?&")
+    return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
+
+
+def _is_blocked_cdn(image_url: str) -> bool:
+    """Returns True if the image URL is from a CDN known to block wsrv.nl."""
+    return any(cdn in image_url for cdn in _BLOCKED_IMAGE_CDNS)
 
 
 def _ddg_image_search(query: str, fallback_query: str = "") -> str:
@@ -189,14 +204,16 @@ def _ddg_image_search(query: str, fallback_query: str = "") -> str:
             for result in results:
                 page_url = result.get("url", "")
                 img_url  = result.get("image", "")
-                if img_url.startswith("https://") and any(d in page_url for d in _PREFERRED_DOMAINS):
+                if (img_url.startswith("https://")
+                        and not _is_blocked_cdn(img_url)
+                        and any(d in page_url for d in _PREFERRED_DOMAINS)):
                     logger.debug(f"  DDG: retailer hit — {page_url[:60]}")
                     return _wsrv(img_url)
 
-            # ── Step 3b: fall back to any HTTPS image ─────────────────────────
+            # ── Step 3b: fall back to any proxiable HTTPS image ───────────────
             for result in results:
                 img_url = result.get("image", "")
-                if img_url.startswith("https://"):
+                if img_url.startswith("https://") and not _is_blocked_cdn(img_url):
                     logger.debug(f"  DDG: generic hit — {img_url[:60]}")
                     return _wsrv(img_url)
 
