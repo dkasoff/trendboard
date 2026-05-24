@@ -94,64 +94,80 @@ TEST_PRODUCT_IMAGES = {
 }
 
 
-# ── GOOGLE CSE — product image search ────────────────────────────────────────
+# ── DUCKDUCKGO IMAGE SEARCH — product images ──────────────────────────────────
+# Free, no API key, no account required.
+# Uses DDG's unofficial image search endpoint (same engine that powers the
+# Images tab on duckduckgo.com). Stable since 2019; no known rate limits at
+# our usage level (25 queries/week).
 
-def _google_image_search(query: str, fallback_query: str = "") -> str:
-    """
-    Calls Google Custom Search API (image mode) for a single result.
-    The CSE is configured to search retailer sites (Amazon, Sephora, etc.)
-    so results are always clean product shots.
-    Returns a wsrv.nl-proxied URL, or "" on failure.
-    """
-    if not GOOGLE_CSE_API_KEY or not GOOGLE_CSE_CX:
-        logger.debug("Google CSE not configured — skipping product image fetch")
-        return ""
+import re as _re
 
+_DDG_HEADERS = {
+    "User-Agent":      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/124.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer":         "https://duckduckgo.com/",
+}
+
+def _ddg_image_search(query: str, fallback_query: str = "") -> str:
+    """
+    Searches DuckDuckGo Images for a product photo.
+    Returns a wsrv.nl-proxied HTTPS URL, or "" on failure.
+
+    Flow:
+      1. GET duckduckgo.com/?q=... → extract the session token (vqd)
+      2. GET duckduckgo.com/i.js?q=...&vqd=... → JSON image results
+      3. Pick first HTTPS result, proxy through wsrv.nl
+    """
     for attempt, q in enumerate([query, fallback_query]):
         if not q:
             continue
         try:
-            params = urllib.parse.urlencode({
-                "key":        GOOGLE_CSE_API_KEY,
-                "cx":         GOOGLE_CSE_CX,
-                "q":          q,
-                "searchType": "image",
-                "num":        5,            # fetch top 5, pick best
-                "imgType":    "photo",
-                "safe":       "active",
-                "imgSize":    "medium",
-            })
-            url = f"https://www.googleapis.com/customsearch/v1?{params}"
+            # ── Step 1: get vqd session token ────────────────────────────────
+            encoded_q = urllib.parse.quote_plus(q)
+            init_url  = f"https://duckduckgo.com/?q={encoded_q}&iax=images&ia=images"
+            req = urllib.request.Request(init_url, headers=_DDG_HEADERS)
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                html = resp.read().decode("utf-8", errors="replace")
 
-            req = urllib.request.Request(url, headers={"Accept": "application/json"})
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            vqd_match = (_re.search(r'vqd="([^"]+)"', html) or
+                         _re.search(r"vqd='([^']+)'", html) or
+                         _re.search(r'vqd=([\d-]+)', html))
+            if not vqd_match:
+                logger.warning(f"DDG: vqd token not found for '{q}'")
+                continue
+            vqd = vqd_match.group(1)
+
+            # ── Step 2: fetch image results ───────────────────────────────────
+            params = urllib.parse.urlencode({
+                "q":   q,
+                "vqd": vqd,
+                "p":   "1",
+                "s":   "0",
+                "f":   ",,,",
+                "l":   "us-en",
+                "o":   "json",
+            })
+            img_req = urllib.request.Request(
+                f"https://duckduckgo.com/i.js?{params}",
+                headers={**_DDG_HEADERS, "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(img_req, timeout=12) as resp:
                 data = json.loads(resp.read())
 
-            items = data.get("items", [])
-            if items:
-                # Prefer HTTPS; proxy through wsrv.nl to eliminate CORS issues
-                for item in items:
-                    link = item.get("link", "")
-                    if link.startswith("https://"):
-                        encoded = urllib.parse.quote(link.replace("https://", ""), safe="")
-                        return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
-                # fallback: take first result even if HTTP
-                link = items[0].get("link", "")
-                if link:
-                    encoded = urllib.parse.quote(link.replace("https://", "").replace("http://", ""), safe="")
+            # ── Step 3: pick best HTTPS result ────────────────────────────────
+            for result in data.get("results", [])[:8]:
+                link = result.get("image", "")
+                if link.startswith("https://"):
+                    encoded = urllib.parse.quote(link.replace("https://", ""), safe="")
                     return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
 
-        except urllib.error.HTTPError as e:
-            if e.code == 429:
-                logger.warning("Google CSE rate limit — sleeping 30s")
-                time.sleep(30)
-            else:
-                logger.warning(f"Google CSE HTTP {e.code} for: {q}")
         except Exception as e:
-            logger.warning(f"Google CSE error for '{q}': {e}")
+            logger.warning(f"DDG image search error for '{q}': {e}")
 
         if attempt == 0:
-            time.sleep(1)   # brief pause before fallback query
+            time.sleep(1.5)   # brief pause before fallback query
 
     return ""
 
@@ -198,15 +214,15 @@ def fetch_product_image(brand: str, product_name: str,
             logger.debug(f"  [test] product image: {key}")
         return url
 
-    # ── LIVE MODE — Google CSE ────────────────────────────────────────────────
-    # Primary: exact brand + product name (finds the product listing on Amazon/Sephora)
-    # Fallback: broader query using product type
-    primary  = f"{full_name} product"
-    fallback = f"{brand} {product_type_label} skincare" if product_type_label else f"{full_name} skincare"
+    # ── LIVE MODE — DuckDuckGo image search ──────────────────────────────────
+    # Primary: exact brand + product (finds the product on Amazon/Sephora/brand site)
+    # Fallback: broader query with product type
+    primary  = f"{full_name} skincare product"
+    fallback = f"{brand} {product_type_label}" if product_type_label else f"{full_name}"
 
     logger.info(f"  Fetching product image: {full_name}")
-    url = _google_image_search(primary, fallback)
-    time.sleep(0.5)     # stay well within free-tier rate limits
+    url = _ddg_image_search(primary, fallback)
+    time.sleep(1.0)     # polite delay between DDG requests
     return url
 
 
