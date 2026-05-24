@@ -48,24 +48,33 @@ GOOGLE_CSE_CX      = os.getenv("GOOGLE_CSE_CX", "")
 # Generic, unbranded lifestyle/flatlay shots. One per category type.
 # These are used in BOTH test and live mode — no API call ever needed.
 # To update: replace the Unsplash photo ID (the long number after "photo-").
+def _unsplash(photo_id: str) -> str:
+    """Proxy an Unsplash photo through wsrv.nl for reliable, CORS-safe delivery."""
+    return f"https://wsrv.nl/?url=images.unsplash.com/{photo_id}&w=500&h=500&fit=cover&output=webp"
+
+# All photo IDs verified HTTP 200 as of 2026-05-23.
+# To replace a broken one: find a new ID on unsplash.com, curl-test it, update here.
 CATEGORY_IMAGES = {
-    "moisturizer":    "https://images.unsplash.com/photo-1570194065650-d99fb4b8ccb0?w=500&q=85",
-    "serum":          "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=85",
-    "cleanser":       "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=500&q=85",
-    "sunscreen":      "https://images.unsplash.com/photo-1556228852-80b6e5eeff06?w=500&q=85",
-    "toner":          "https://images.unsplash.com/photo-1631390090687-5a9c3b88ec5e?w=500&q=85",
-    "exfoliant":      "https://images.unsplash.com/photo-1556228841-a3c527ebefe5?w=500&q=85",
-    "retinoid":       "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=500&q=85",
-    "eye_treatment":  "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?w=500&q=85",
-    "mask":           "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=500&q=85",
-    "face_oil":       "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=500&q=85",
-    "led_device":     "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=500&q=85",
-    "lip_care":       "https://images.unsplash.com/photo-1599305445671-ac291c95aaa9?w=500&q=85",
-    "body_care":      "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=500&q=85",
-    "microcurrent":   "https://images.unsplash.com/photo-1612817288484-6f916006741a?w=500&q=85",
-    "foundation":     "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=500&q=85",
-    "spf":            "https://images.unsplash.com/photo-1556228852-80b6e5eeff06?w=500&q=85",
-    "essence":        "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=500&q=85",
+    "moisturizer":         _unsplash("photo-1556228720-195a672e8a03"),  # pastel cream jar
+    "serum":               _unsplash("photo-1620916566398-39f1143ab7be"),  # dropper bottle
+    "cleanser":            _unsplash("photo-1556228578-8c89e6adf883"),   # foam cleanser
+    "sunscreen":           _unsplash("photo-1505944270255-72b8c68c6a70"),  # SPF lotion
+    "toner":               _unsplash("photo-1616394584738-fc6e612e71b9"),  # clear bottle
+    "exfoliant":           _unsplash("photo-1604335399105-a0c585fd81a1"),  # scrub texture
+    "retinoid":            _unsplash("photo-1596755389378-c31d21fd1273"),  # night cream
+    "eye_treatment":       _unsplash("photo-1512290923902-8a9f81dc236c"),  # eye area
+    "mask":                _unsplash("photo-1596462502278-27bfdc403348"),  # face mask
+    "face_oil":            _unsplash("photo-1608248543803-ba4f8c70ae0b"),  # dropper oil
+    "led_device":          _unsplash("photo-1598440947619-2c35fc9aa908"),  # skincare device
+    "lip_care":            _unsplash("photo-1599305445671-ac291c95aaa9"),  # lip product
+    "body_care":           _unsplash("photo-1471107340929-a87cd0f5b5f3"),  # body lotion
+    "microcurrent":        _unsplash("photo-1612817288484-6f916006741a"),  # microcurrent device
+    "microcurrent_device": _unsplash("photo-1612817288484-6f916006741a"),
+    "foundation":          _unsplash("photo-1522335789203-aabd1fc54bc9"),  # makeup flatlay
+    "foundation_base":     _unsplash("photo-1522335789203-aabd1fc54bc9"),
+    "spf":                 _unsplash("photo-1505944270255-72b8c68c6a70"),
+    "essence":             _unsplash("photo-1620916566398-39f1143ab7be"),
+    "serum_essence":       _unsplash("photo-1620916566398-39f1143ab7be"),
 }
 
 # ── TEST-MODE product image fallbacks ─────────────────────────────────────────
