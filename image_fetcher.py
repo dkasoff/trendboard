@@ -60,7 +60,7 @@ CATEGORY_IMAGES = {
     "cleanser":            _unsplash("photo-1556228578-8c89e6adf883"),   # foam cleanser
     "sunscreen":           _unsplash("photo-1505944270255-72b8c68c6a70"),  # SPF lotion
     "toner":               _unsplash("photo-1616394584738-fc6e612e71b9"),  # clear bottle
-    "exfoliant":           _unsplash("photo-1604335399105-a0c585fd81a1"),  # scrub texture
+    "exfoliant":           _unsplash("photo-1570172619644-dfd03ed5d881"),  # facial exfoliant treatment
     "retinoid":            _unsplash("photo-1596755389378-c31d21fd1273"),  # night cream
     "eye_treatment":       _unsplash("photo-1512290923902-8a9f81dc236c"),  # eye area
     "mask":                _unsplash("photo-1596462502278-27bfdc403348"),  # face mask
@@ -68,8 +68,8 @@ CATEGORY_IMAGES = {
     "led_device":          _unsplash("photo-1598440947619-2c35fc9aa908"),  # skincare device
     "lip_care":            _unsplash("photo-1599305445671-ac291c95aaa9"),  # lip product
     "body_care":           _unsplash("photo-1471107340929-a87cd0f5b5f3"),  # body lotion
-    "microcurrent":        _unsplash("photo-1612817288484-6f916006741a"),  # microcurrent device
-    "microcurrent_device": _unsplash("photo-1612817288484-6f916006741a"),
+    "microcurrent":        _unsplash("photo-1589710751893-f9a6770ad71b"),  # facial device treatment
+    "microcurrent_device": _unsplash("photo-1589710751893-f9a6770ad71b"),
     "foundation":          _unsplash("photo-1522335789203-aabd1fc54bc9"),  # makeup flatlay
     "foundation_base":     _unsplash("photo-1522335789203-aabd1fc54bc9"),
     "spf":                 _unsplash("photo-1505944270255-72b8c68c6a70"),
