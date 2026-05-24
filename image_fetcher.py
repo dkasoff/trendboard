@@ -56,11 +56,11 @@ def _unsplash(photo_id: str) -> str:
 # To replace a broken one: find a new ID on unsplash.com, curl-test it, update here.
 CATEGORY_IMAGES = {
     "moisturizer":         _unsplash("photo-1556228720-195a672e8a03"),  # pastel cream jar
-    "serum":               _unsplash("photo-1620916566398-39f1143ab7be"),  # dropper bottle
+    "serum":               "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
     "cleanser":            _unsplash("photo-1556228578-8c89e6adf883"),   # foam cleanser
     "sunscreen":           _unsplash("photo-1505944270255-72b8c68c6a70"),  # SPF lotion
-    "toner":               _unsplash("photo-1616394584738-fc6e612e71b9"),  # clear bottle
-    "exfoliant":           _unsplash("photo-1570172619644-dfd03ed5d881"),  # facial exfoliant treatment
+    "toner":               "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1673628551192-ca9aca8b57f0&w=500&h=500&fit=cover&output=webp",
+    "exfoliant":           "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1677850271710-49fda851db22&w=500&h=500&fit=cover&output=webp",
     "retinoid":            _unsplash("photo-1596755389378-c31d21fd1273"),  # night cream
     "eye_treatment":       _unsplash("photo-1512290923902-8a9f81dc236c"),  # eye area
     "mask":                _unsplash("photo-1596462502278-27bfdc403348"),  # face mask
@@ -73,8 +73,8 @@ CATEGORY_IMAGES = {
     "foundation":          _unsplash("photo-1522335789203-aabd1fc54bc9"),  # makeup flatlay
     "foundation_base":     _unsplash("photo-1522335789203-aabd1fc54bc9"),
     "spf":                 _unsplash("photo-1505944270255-72b8c68c6a70"),
-    "essence":             _unsplash("photo-1620916566398-39f1143ab7be"),
-    "serum_essence":       _unsplash("photo-1620916566398-39f1143ab7be"),
+    "essence":             "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
+    "serum_essence":       "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
 }
 
 # ── TEST-MODE product image fallbacks ─────────────────────────────────────────
