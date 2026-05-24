@@ -68,8 +68,8 @@ CATEGORY_IMAGES = {
     "led_device":          _unsplash("photo-1598440947619-2c35fc9aa908"),  # skincare device
     "lip_care":            _unsplash("photo-1599305445671-ac291c95aaa9"),  # lip product
     "body_care":           _unsplash("photo-1471107340929-a87cd0f5b5f3"),  # body lotion
-    "microcurrent":        _unsplash("qDO68fAdK0o"),  # facial device treatment
-    "microcurrent_device": _unsplash("qDO68fAdK0o"),
+    "microcurrent":        "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1734468965603-d26738eb6ed0&w=500&h=500&fit=cover&output=webp",  # woman holding compact device
+    "microcurrent_device": "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1734468965603-d26738eb6ed0&w=500&h=500&fit=cover&output=webp",
     "foundation":          _unsplash("photo-1522335789203-aabd1fc54bc9"),  # makeup flatlay
     "foundation_base":     _unsplash("photo-1522335789203-aabd1fc54bc9"),
     "spf":                 _unsplash("photo-1505944270255-72b8c68c6a70"),
