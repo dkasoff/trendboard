@@ -44,6 +44,16 @@ logger = logging.getLogger(__name__)
 GOOGLE_CSE_API_KEY = os.getenv("GOOGLE_CSE_API_KEY", "")
 GOOGLE_CSE_CX      = os.getenv("GOOGLE_CSE_CX", "")
 
+# CDNs that block wsrv.nl hotlinking — skip any image URL from these
+_BLOCKED_IMAGE_CDNS = (
+    "m.media-amazon.com",
+    "sephora.com/productimages",
+    "pinimg.com",
+    "fbcdn.net",
+    "cdninstagram.com",
+    "lookaside.fbsbx.com",
+)
+
 # ── CATEGORY IMAGES — permanent Unsplash URLs ─────────────────────────────────
 # Generic, unbranded lifestyle/flatlay shots. One per category type.
 # These are used in BOTH test and live mode — no API call ever needed.
@@ -156,6 +166,47 @@ def _google_image_search(query: str, fallback_query: str = "") -> str:
     return ""
 
 
+def _ddg_image_search(query: str, fallback_query: str = "") -> str:
+    """
+    DuckDuckGo image search — no API key required.
+    Used as primary source when Google CSE key is not configured,
+    and as fallback when Google CSE returns no usable results.
+
+    Filters out blocked CDNs (Amazon, Sephora, Pinterest, etc.)
+    that block wsrv.nl hotlinking. Tries up to 5 results per query.
+    Returns a wsrv.nl-proxied URL or "" on failure.
+    """
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        logger.debug("ddgs not installed — skipping DDG image search")
+        return ""
+
+    for attempt, q in enumerate([query, fallback_query]):
+        if not q:
+            continue
+        try:
+            results = list(DDGS().images(q, max_results=5))
+            time.sleep(0.8)   # polite delay
+
+            for r in results:
+                link = r.get("image", "")
+                if not link:
+                    continue
+                # Skip CDNs that block wsrv.nl hotlinking
+                if any(cdn in link for cdn in _BLOCKED_IMAGE_CDNS):
+                    continue
+                # Proxy through wsrv.nl — strip scheme before building URL
+                scheme_stripped = link.replace("https://", "").replace("http://", "")
+                encoded = urllib.parse.quote(scheme_stripped, safe="/:@!$&'()*+,;=?#[]")
+                return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
+
+        except Exception as e:
+            logger.debug(f"DDG image search error for '{q}': {e}")
+
+    return ""
+
+
 # ── PUBLIC API ────────────────────────────────────────────────────────────────
 
 def fetch_category_image(type_id: str, type_label: str = "") -> str:
@@ -198,15 +249,21 @@ def fetch_product_image(brand: str, product_name: str,
             logger.debug(f"  [test] product image: {key}")
         return url
 
-    # ── LIVE MODE — Google CSE ────────────────────────────────────────────────
-    # Primary: exact brand + product name (finds the product listing on Amazon/Sephora)
-    # Fallback: broader query using product type
+    # ── LIVE MODE ─────────────────────────────────────────────────────────────
     primary  = f"{full_name} product"
     fallback = f"{brand} {product_type_label} skincare" if product_type_label else f"{full_name} skincare"
 
     logger.info(f"  Fetching product image: {full_name}")
-    url = _google_image_search(primary, fallback)
-    time.sleep(0.5)     # stay well within free-tier rate limits
+
+    # Prefer Google CSE (retailer sites → cleaner shots); fall back to DDG
+    if GOOGLE_CSE_API_KEY and GOOGLE_CSE_CX:
+        url = _google_image_search(primary, fallback)
+        if url:
+            return url
+        logger.debug(f"  Google CSE returned nothing for '{full_name}' — trying DDG")
+
+    url = _ddg_image_search(primary, fallback)
+    time.sleep(0.3)
     return url
 
 
