@@ -25,12 +25,10 @@ Usage:
 
 import os
 import time
-import json
 import logging
-import urllib.request
-import urllib.error
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from apify_client import ApifyClient
 
 from extractor import VideoSignal
 from safety import guard, is_test_mode, COST_ESTIMATES
@@ -150,77 +148,28 @@ CREATOR_ACCOUNTS = [
 ]
 
 
-# ─── APIFY CLIENT ────────────────────────────────────────────────────────────
+# ─── TIKTOK ACTOR ────────────────────────────────────────────────────────────
+# clockworks/tiktok-scraper — actor ID from Apify console Python snippet.
+# Uses sync ApifyClient (not async); run["defaultDatasetId"] is dict key access.
 
-class ApifyClient:
-    """
-    Thin wrapper around Apify REST API.
-    Handles actor runs and result polling.
-    """
+TIKTOK_ACTOR_ID = "GdWCkxBtKWOsKjdch"   # clockworks/tiktok-scraper
 
-    BASE_URL = "https://api.apify.com/v2"
-
-    def __init__(self, token: str):
-        self.token = token
-
-    def run_actor(self, actor_id: str, input_data: dict,
-                  poll_timeout: int = 90) -> list[dict]:
-        """
-        Runs an Apify actor and waits for results.
-        Returns list of result items, or empty list on failure.
-        """
-        # ── SAFETY GATE ──────────────────────────────────────────────────────
-        guard("Apify TikTok scraper", COST_ESTIMATES["apify_tiktok_hashtag"])
-        # ─────────────────────────────────────────────────────────────────────
-
-        if not self.token:
-            logger.warning("No Apify token — skipping scrape")
-            return []
-
-        try:
-            # Start actor run
-            url = f"{self.BASE_URL}/acts/{actor_id}/runs?token={self.token}"
-            payload = json.dumps(input_data).encode()
-            req = urllib.request.Request(
-                url, data=payload,
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                run_data = json.loads(resp.read())
-
-            run_id = run_data.get("data", {}).get("id")
-            if not run_id:
-                logger.warning(f"No run ID returned for actor {actor_id}")
-                return []
-
-            # Poll for completion
-            start = time.time()
-            while time.time() - start < poll_timeout:
-                time.sleep(8)
-                status_url = f"{self.BASE_URL}/actor-runs/{run_id}?token={self.token}"
-                with urllib.request.urlopen(status_url, timeout=15) as resp:
-                    status = json.loads(resp.read())
-
-                run_status = status.get("data", {}).get("status", "")
-                if run_status in ("SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"):
-                    break
-
-            if run_status != "SUCCEEDED":
-                logger.warning(f"Actor run {run_id} ended with status: {run_status}")
-                return []
-
-            # Fetch results
-            items_url = f"{self.BASE_URL}/actor-runs/{run_id}/dataset/items?token={self.token}&limit=500"
-            with urllib.request.urlopen(items_url, timeout=30) as resp:
-                items = json.loads(resp.read())
-
-            return items if isinstance(items, list) else []
-
-        except Exception as e:
-            logger.error(f"Apify error for {actor_id}: {e}")
-            return []
+# Minimal input — only the fields we need, everything else at actor defaults.
+# Based on the official Python snippet from Apify console.
+_TIKTOK_BASE_INPUT = {
+    "excludePinnedPosts":           False,
+    "shouldDownloadVideos":         False,
+    "shouldDownloadCovers":         False,
+    "shouldDownloadSlideshowImages":False,
+    "shouldDownloadAvatars":        False,
+    "shouldDownloadMusicCovers":    False,
+    "commentsPerPost":              0,
+    "topLevelCommentsPerPost":      0,
+    "maxRepliesPerComment":         0,
+    "scrapeRelatedVideos":          False,
+    "proxyCountryCode":             "None",
+    "downloadSubtitlesOptions":     "NEVER_DOWNLOAD_SUBTITLES",
+}
 
 
 # ─── VIDEO PARSERS ───────────────────────────────────────────────────────────
@@ -346,66 +295,77 @@ import re   # needed inside the module for hashtag extraction in parse_tiktok_vi
 class DiscoveryScraper:
     """
     Main discovery engine.
-    Runs hashtag scrapes and creator account scrapes via Apify.
+    Runs TikTok hashtag + creator scrapes and Instagram hashtag scrapes via Apify.
+
+    TikTok:    sync ApifyClient  — actor GdWCkxBtKWOsKjdch (clockworks/tiktok-scraper)
+    Instagram: async ApifyClientAsync — actor shu8hvrXbJbY3Eb9W (apify/instagram-scraper)
     """
 
-    TIKTOK_ACTOR = "clockworks~free-tiktok-scraper"
-
     def __init__(self, apify_token: str = None):
-        self.token  = apify_token or os.getenv("APIFY_TOKEN", "")
-        self.client = ApifyClient(self.token)
+        self.token          = apify_token or os.getenv("APIFY_TOKEN", "")
+        self.client         = ApifyClient(self.token)   # sync, for TikTok
         self.seven_days_ago = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
 
     def scrape_hashtag(self, hashtag: str,
                        max_videos: int = 200) -> list[VideoSignal]:
-        """Scrapes a single TikTok hashtag for recent videos."""
-        logger.info(f"    Scraping #{hashtag} (max {max_videos} videos)")
+        """
+        Scrapes a single TikTok hashtag for recent videos.
+        Uses sync ApifyClient — run["defaultDatasetId"] is dict key access.
+        """
+        logger.info(f"    Scraping TikTok #{hashtag} (max {max_videos})")
+        guard("TikTok scraper: #" + hashtag, COST_ESTIMATES["apify_tiktok_hashtag"])
 
-        raw_items = self.client.run_actor(
-            self.TIKTOK_ACTOR,
-            {
-                "hashtags": [hashtag],
-                "resultsPerPage": max_videos,
-                "maxPostsPerQuery": max_videos,
-                "shouldDownloadVideos": False,
-                "shouldDownloadCovers": False,
-            }
-        )
+        try:
+            run = self.client.actor(TIKTOK_ACTOR_ID).call(run_input={
+                **_TIKTOK_BASE_INPUT,
+                "hashtags":             [hashtag],
+                "resultsPerPage":       max_videos,
+                "oldestPostDateUnified": self.seven_days_ago,  # server-side date filter
+            })
+            raw_items = list(self.client.dataset(run["defaultDatasetId"]).iterate_items())
+        except Exception as e:
+            logger.warning(f"    TikTok scrape failed for #{hashtag}: {e}")
+            return []
 
         videos = []
         for item in raw_items:
             v = parse_tiktok_video(item, source_hashtag=hashtag)
-            if v:
-                # Only keep videos from last 7 days
-                if v.posted_date >= self.seven_days_ago:
-                    videos.append(v)
+            if v and v.posted_date >= self.seven_days_ago:
+                videos.append(v)
 
         logger.info(f"    → {len(videos)} recent videos from #{hashtag}")
-        time.sleep(3)   # Rate limit between hashtag calls
+        time.sleep(3)   # polite delay between actor runs
         return videos
 
     def scrape_creator(self, creator: dict,
                        max_videos: int = 50) -> list[VideoSignal]:
-        """Scrapes recent videos from a specific creator account."""
+        """
+        Scrapes recent videos from a specific TikTok creator account.
+        Uses sync ApifyClient — run["defaultDatasetId"] is dict key access.
+        """
         handle = creator["handle"]
-        logger.info(f"    Scraping @{handle} (max {max_videos} videos)")
+        logger.info(f"    Scraping TikTok @{handle} (max {max_videos})")
+        guard("TikTok scraper: @" + handle, COST_ESTIMATES["apify_tiktok_hashtag"])
 
-        raw_items = self.client.run_actor(
-            self.TIKTOK_ACTOR,
-            {
-                "profiles": [handle],
-                "resultsPerPage": max_videos,
-                "maxPostsPerQuery": max_videos,
-                "shouldDownloadVideos": False,
-                "shouldDownloadCovers": False,
-            }
-        )
+        try:
+            run = self.client.actor(TIKTOK_ACTOR_ID).call(run_input={
+                **_TIKTOK_BASE_INPUT,
+                "profiles":              [handle],
+                "profileScrapeSections": ["videos"],
+                "profileSorting":        "latest",
+                "resultsPerPage":        max_videos,
+                "oldestPostDateUnified": self.seven_days_ago,
+            })
+            raw_items = list(self.client.dataset(run["defaultDatasetId"]).iterate_items())
+        except Exception as e:
+            logger.warning(f"    TikTok scrape failed for @{handle}: {e}")
+            return []
 
         videos = []
         for item in raw_items:
             v = parse_tiktok_video(item)
             if v:
-                # Override follower count with our registry data (more reliable)
+                # Registry follower count is more reliable than what the actor returns
                 v.follower_count = creator.get("followers", v.follower_count)
                 if v.posted_date >= self.seven_days_ago:
                     videos.append(v)
