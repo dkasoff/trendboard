@@ -1,16 +1,17 @@
 """
 trendboard.fyi — Skincare Discovery Scraper
 ============================================
-Uses Apify to scrape TikTok videos from:
+Uses Apify to scrape TikTok videos and Instagram posts from:
   1. Skincare/beauty hashtags (broad signal)
-  2. Trusted creator accounts (quality signal)
+  2. Trusted creator accounts (quality signal — TikTok only)
 
 Returns a list of VideoSignal objects ready for the extractor.
 
 Cost management:
-  - Tier 1+2 hashtags: weekly, 200 videos each
-  - Creator accounts: weekly, 50 recent videos each
-  - Total: ~15,000 results/week ≈ $55 at free tier
+  - TikTok Tier 1+2 hashtags: weekly, 200 videos each   ≈ $0.30/hashtag
+  - TikTok creator accounts: weekly, 50 videos each      ≈ $0.30/account
+  - Instagram hashtags: weekly, 100 posts each           ≈ $0.10/hashtag
+  - Full weekly run: ~$55 TikTok + ~$1.20 Instagram
 
 Rate limiting:
   - 3 second sleep between Apify calls
@@ -83,6 +84,37 @@ HASHTAGS_MAKEUP = [
     "makeupfinds", "grwm", "getreadywithme",
     "lipcombo", "foundationreview", "concealerhacks",
     "blushdraping", "cleanmakeup", "glowymakeup",
+]
+
+# ─── INSTAGRAM ACTOR + HASHTAGS ──────────────────────────────────────────────
+# Actor: apify/instagram-scraper (most-used, actively maintained)
+# Searches by hashtag → returns recent posts with captions, likes, comments.
+# Note: follower count requires addParentData=True (extra cost) — skipped for now.
+# Instagram hashtag culture differs from TikTok: fewer viral spikes, more
+# sustained community discussion. Good for confirming products that are
+# genuinely embedded in the skincare community vs. one-off TikTok moments.
+
+INSTAGRAM_ACTOR_ID = "shu8hvrXbJbY3Eb9W"   # apify/instagram-scraper
+
+INSTAGRAM_HASHTAGS = [
+    # Routine & review — highest product mention density
+    "skincareroutine", "skincarereview", "skincarefinds",
+    "skincareproducts", "skincarerecommendation",
+
+    # K-beauty — dominant trending segment
+    "kbeauty", "kbeautyroutine", "kbeautyproducts",
+
+    # Ingredient-led — maps directly to our product taxonomy
+    "retinol", "niacinamide", "spfsunscreen", "hyaluronicacid",
+
+    # Purchase intent / discovery
+    "sephorafinds", "amazonskincarehaul",
+
+    # Skin concern communities — strong organic signal
+    "acneskincare", "dryskincare", "sensitiveskin",
+
+    # General discovery
+    "skincaretok", "skintok",
 ]
 
 # ─── CREATOR ACCOUNT REGISTRY ────────────────────────────────────────────────
@@ -241,6 +273,72 @@ def parse_tiktok_video(raw: dict, source_hashtag: str = "") -> VideoSignal | Non
         return None
 
 
+# ─── INSTAGRAM POST PARSER ───────────────────────────────────────────────────
+
+def parse_instagram_post(raw: dict) -> VideoSignal | None:
+    """
+    Parses a raw apify/instagram-scraper result into a VideoSignal.
+
+    Field mapping (apify/instagram-scraper response):
+      raw["id"]            → video_id
+      raw["ownerId"]       → creator_id
+      raw["ownerUsername"] → creator_handle
+      raw["caption"]       → caption
+      raw["hashtags"]      → hashtags (already parsed list)
+      raw["likesCount"]    → like_count
+      raw["commentsCount"] → comment_count
+      raw["timestamp"]     → posted_date (ISO 8601)
+      raw["type"]          → "Image" | "Video" | "Sidecar"
+
+    Note: follower_count is not available without addParentData=True.
+    Defaults to 0 — Instagram posts contribute to density/sentiment scoring
+    but not creator-tier weighting.
+    """
+    try:
+        post_id = str(raw.get("id") or raw.get("shortCode", ""))
+        owner_id = str(raw.get("ownerId") or raw.get("ownerUsername", ""))
+        handle  = str(raw.get("ownerUsername", ""))
+        caption = str(raw.get("caption") or "")
+
+        if not post_id or not caption.strip():
+            return None
+
+        likes    = int(raw.get("likesCount")    or 0)
+        comments = int(raw.get("commentsCount") or 0)
+        ts       = str(raw.get("timestamp", ""))
+
+        # Hashtags come pre-parsed as a list from this actor
+        hashtags = [str(h).lower().lstrip("#") for h in (raw.get("hashtags") or [])]
+
+        # Fall back to extracting from caption if list is empty
+        if not hashtags and caption:
+            hashtags = re.findall(r'#(\w+)', caption.lower())
+
+        # Detect sponsorship
+        sponsored_tags = {"ad", "sponsored", "gifted", "partner", "collab", "paid",
+                          "paidpartnership", "advertisement"}
+        is_sponsored = (bool(sponsored_tags & set(hashtags)) or
+                        any(f"#{t}" in caption.lower() for t in sponsored_tags))
+
+        return VideoSignal(
+            video_id       = f"ig_{post_id}",
+            creator_id     = f"ig_{owner_id}",
+            creator_handle = handle,
+            caption        = caption,
+            hashtags       = hashtags,
+            like_count     = likes,
+            comment_count  = comments,
+            share_count    = 0,          # Instagram doesn't expose share counts
+            follower_count = 0,          # Requires addParentData=True — skipped
+            posted_date    = ts[:10] if ts else "",   # Trim to YYYY-MM-DD
+            platform       = "instagram",
+            is_sponsored   = is_sponsored,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to parse Instagram post: {e}")
+        return None
+
+
 # ─── DISCOVERY SCRAPER ────────────────────────────────────────────────────────
 
 import re   # needed inside the module for hashtag extraction in parse_tiktok_video
@@ -316,24 +414,76 @@ class DiscoveryScraper:
         time.sleep(3)
         return videos
 
+    def scrape_instagram_hashtag(self, hashtag: str,
+                                  max_posts: int = 100) -> list[VideoSignal]:
+        """
+        Scrapes a single Instagram hashtag using apify/instagram-scraper.
+        Uses the apify_client library (cleaner than raw urllib for async actors).
+        """
+        logger.info(f"    Scraping IG #{hashtag} (max {max_posts} posts)")
+        guard("Instagram scraper: #" + hashtag,
+              COST_ESTIMATES.get("apify_instagram_single", 0.10))
+
+        try:
+            from apify_client import ApifyClient as _OfficialClient
+            ig_client = _OfficialClient(self.token)
+
+            run = ig_client.actor(INSTAGRAM_ACTOR_ID).call(run_input={
+                "resultsType":        "posts",
+                "search":             hashtag,
+                "searchType":         "hashtag",
+                "searchLimit":        1,          # one hashtag per call
+                "resultsLimit":       max_posts,
+                "addParentData":      False,       # skipping follower counts for cost
+                "onlyPostsNewerThan": self.seven_days_ago,
+            })
+
+            items = list(ig_client.dataset(run["defaultDatasetId"]).iterate_items())
+
+        except Exception as e:
+            logger.warning(f"    Instagram scrape failed for #{hashtag}: {e}")
+            return []
+
+        posts = []
+        for item in items:
+            v = parse_instagram_post(item)
+            if v and (not v.posted_date or v.posted_date >= self.seven_days_ago):
+                posts.append(v)
+
+        logger.info(f"    → {len(posts)} recent posts from IG #{hashtag}")
+        time.sleep(3)
+        return posts
+
     def run_hashtag_discovery(self, run_devices: bool = False,
                                run_makeup: bool = False) -> list[VideoSignal]:
-        """Runs all hashtag scrapes."""
+        """Runs all TikTok hashtag scrapes."""
         all_videos = []
         hashtags   = HASHTAGS_TIER1 + HASHTAGS_TIER2
         if run_devices: hashtags += HASHTAGS_DEVICES
         if run_makeup:  hashtags += HASHTAGS_MAKEUP
 
-        logger.info(f"\n  Hashtag discovery: {len(hashtags)} hashtags")
+        logger.info(f"\n  TikTok hashtag discovery: {len(hashtags)} hashtags")
         for ht in hashtags:
             videos = self.scrape_hashtag(ht, max_videos=200)
             all_videos.extend(videos)
 
-        logger.info(f"  Total from hashtags: {len(all_videos)} videos")
+        logger.info(f"  Total from TikTok hashtags: {len(all_videos)} videos")
         return all_videos
 
+    def run_instagram_discovery(self) -> list[VideoSignal]:
+        """Runs all Instagram hashtag scrapes."""
+        all_posts = []
+
+        logger.info(f"\n  Instagram hashtag discovery: {len(INSTAGRAM_HASHTAGS)} hashtags")
+        for ht in INSTAGRAM_HASHTAGS:
+            posts = self.scrape_instagram_hashtag(ht, max_posts=100)
+            all_posts.extend(posts)
+
+        logger.info(f"  Total from Instagram hashtags: {len(all_posts)} posts")
+        return all_posts
+
     def run_creator_discovery(self) -> list[VideoSignal]:
-        """Runs all creator account scrapes."""
+        """Runs all TikTok creator account scrapes."""
         all_videos = []
 
         logger.info(f"\n  Creator discovery: {len(CREATOR_ACCOUNTS)} accounts")
@@ -347,9 +497,19 @@ class DiscoveryScraper:
     def run_full_discovery(self, run_devices: bool = False,
                             run_makeup: bool = False) -> list[VideoSignal]:
         """
-        Runs the complete discovery pipeline.
+        Runs the complete discovery pipeline: TikTok hashtags + creator accounts
+        + Instagram hashtags.
+
         Returns deduplicated list of VideoSignal objects from last 7 days.
         In TEST_MODE returns empty list immediately — pipeline will use test data.
+
+        Estimated cost per full run:
+          TikTok  ~46 hashtags × $0.30  = ~$13.80
+          TikTok  ~18 creators × $0.30  = ~$5.40
+          Instagram ~20 hashtags × $0.10 = ~$2.00
+          ─────────────────────────────────────────
+          Total                           ~$21.20
+          (Full 15k-video run runs closer to $55 — see safety.py)
         """
         if is_test_mode():
             logger.info("  TEST MODE — skipping live discovery, pipeline will use test data")
@@ -359,19 +519,27 @@ class DiscoveryScraper:
         logger.info("  TRENDBOARD — Skincare Discovery")
         logger.info("="*60)
 
-        hashtag_videos = self.run_hashtag_discovery(run_devices, run_makeup)
-        creator_videos = self.run_creator_discovery()
+        tiktok_hashtag_videos = self.run_hashtag_discovery(run_devices, run_makeup)
+        tiktok_creator_videos = self.run_creator_discovery()
+        instagram_posts       = self.run_instagram_discovery()
 
-        # Combine and deduplicate by video_id
-        all_videos  = hashtag_videos + creator_videos
-        seen_ids    = set()
-        unique      = []
+        # Combine all sources
+        all_videos = tiktok_hashtag_videos + tiktok_creator_videos + instagram_posts
+
+        # Deduplicate by video_id
+        seen_ids = set()
+        unique   = []
         for v in all_videos:
             if v.video_id not in seen_ids:
                 seen_ids.add(v.video_id)
                 unique.append(v)
 
-        logger.info(f"\n  Total unique videos: {len(unique)}")
+        tiktok_count = sum(1 for v in unique if v.platform == "tiktok")
+        ig_count     = sum(1 for v in unique if v.platform == "instagram")
+
+        logger.info(f"\n  Total unique content pieces: {len(unique)}")
+        logger.info(f"    TikTok:    {tiktok_count}")
+        logger.info(f"    Instagram: {ig_count}")
         logger.info(f"  Date filter: {self.seven_days_ago} → today")
 
         return unique
