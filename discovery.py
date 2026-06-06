@@ -334,7 +334,7 @@ class DiscoveryScraper:
                 "resultsPerPage":       max_videos,
                 "oldestPostDateUnified": self.seven_days_ago,  # server-side date filter
             })
-            raw_items = list(self.client.dataset(run["defaultDatasetId"]).iterate_items())
+            raw_items = list(self.client.dataset(run.default_dataset_id).iterate_items())
         except Exception as e:
             logger.warning(f"    TikTok scrape failed for #{hashtag}: {e}")
             return []
@@ -368,7 +368,7 @@ class DiscoveryScraper:
                 "resultsPerPage":        max_videos,
                 "oldestPostDateUnified": self.seven_days_ago,
             })
-            raw_items = list(self.client.dataset(run["defaultDatasetId"]).iterate_items())
+            raw_items = list(self.client.dataset(run.default_dataset_id).iterate_items())
         except Exception as e:
             logger.warning(f"    TikTok scrape failed for @{handle}: {e}")
             return []
