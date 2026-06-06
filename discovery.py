@@ -418,34 +418,52 @@ class DiscoveryScraper:
                                   max_posts: int = 100) -> list[VideoSignal]:
         """
         Scrapes a single Instagram hashtag using apify/instagram-scraper.
-        Uses the apify_client library (cleaner than raw urllib for async actors).
+
+        Uses ApifyClientAsync (required by apify-client >= 1.x, Python >= 3.11).
+        The async call is wrapped in asyncio.run() so the rest of the pipeline
+        stays synchronous.
+
+        Field notes (apify/instagram-scraper response):
+          call_result.default_dataset_id  — attribute access, not dict key
+          list_items_result.items         — list of post dicts
         """
         logger.info(f"    Scraping IG #{hashtag} (max {max_posts} posts)")
         guard("Instagram scraper: #" + hashtag,
               COST_ESTIMATES.get("apify_instagram_single", 0.10))
 
-        try:
-            from apify_client import ApifyClient as _OfficialClient
-            ig_client = _OfficialClient(self.token)
+        import asyncio
+        from apify_client import ApifyClientAsync
 
-            run = ig_client.actor(INSTAGRAM_ACTOR_ID).call(run_input={
+        async def _fetch() -> list[dict]:
+            client       = ApifyClientAsync(self.token)
+            actor_client = client.actor(INSTAGRAM_ACTOR_ID)
+
+            call_result = await actor_client.call(run_input={
                 "resultsType":        "posts",
                 "search":             hashtag,
                 "searchType":         "hashtag",
-                "searchLimit":        1,          # one hashtag per call
+                "searchLimit":        1,       # one hashtag per call
                 "resultsLimit":       max_posts,
-                "addParentData":      False,       # skipping follower counts for cost
+                "addParentData":      False,   # follower count skipped — extra cost
                 "onlyPostsNewerThan": self.seven_days_ago,
             })
 
-            items = list(ig_client.dataset(run["defaultDatasetId"]).iterate_items())
+            if call_result is None:
+                logger.warning(f"    IG actor returned None for #{hashtag}")
+                return []
 
+            dataset_client    = client.dataset(call_result.default_dataset_id)
+            list_items_result = await dataset_client.list_items()
+            return list_items_result.items
+
+        try:
+            raw_items = asyncio.run(_fetch())
         except Exception as e:
             logger.warning(f"    Instagram scrape failed for #{hashtag}: {e}")
             return []
 
         posts = []
-        for item in items:
+        for item in raw_items:
             v = parse_instagram_post(item)
             if v and (not v.posted_date or v.posted_date >= self.seven_days_ago):
                 posts.append(v)
