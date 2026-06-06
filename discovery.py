@@ -199,9 +199,10 @@ def parse_tiktok_video(raw: dict, source_hashtag: str = "") -> VideoSignal | Non
         # Extract hashtags from caption
         hashtags = re.findall(r'#(\w+)', caption.lower()) if caption else []
 
-        # Detect sponsorship
+        # Detect sponsorship — prefer the actor's isAd flag (more reliable than
+        # hashtag detection), fall back to hashtag scanning for older-format results
         sponsored_tags = {"ad", "sponsored", "gifted", "partner", "collab", "paid"}
-        is_sponsored   = bool(sponsored_tags & set(hashtags))
+        is_sponsored   = bool(raw.get("isAd", False)) or bool(sponsored_tags & set(hashtags))
 
         return VideoSignal(
             video_id       = video_id,
