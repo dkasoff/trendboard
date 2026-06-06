@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 COST_ESTIMATES = {
     "apify_tiktok_full":     55.00,
     "apify_tiktok_hashtag":   0.30,   # per hashtag @ 200 videos
-    "apify_instagram_full":  10.00,
-    "apify_instagram_single": 0.10,
+    "apify_instagram_full":   10.00,
+    "apify_instagram_single":  0.10,   # single hashtag @ 100 posts
+    "apify_instagram_batch":   4.50,   # 19 hashtags × 100 posts batched
     "claude_descriptions":    0.15,   # per 25 products
     "reddit_api":             0.00,
     "google_trends":          0.00,

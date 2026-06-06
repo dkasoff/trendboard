@@ -47,7 +47,7 @@ HASHTAGS_TIER1 = [
     "dermatologistrecommended", "dermatologist",
     "acnetreatment", "acneskincare", "skincareroutine",
     "beautytok", "beautyreview", "beautyproducts",
-    "amazonskincare", "amazonbeauty", "amazonfinds",
+    "amazonskincare", "amazonbeauty",
     "tiktokmademebuyit", "skincarehaul", "beautyhaul",
     "unboxing", "productreview", "beforeandafter",
 ]
@@ -55,7 +55,7 @@ HASHTAGS_TIER1 = [
 HASHTAGS_TIER2 = [
     # Category specific — scrape weekly for skincare focus
     "koreanskincare", "kbeauty", "kbeautyroutine",
-    "serumtok", "retinol", "niacinamide", "vitaminc",
+    "serumtok", "retinol", "niacinamide",
     "hyaluronicacid", "spfsunscreen", "sunscreentok",
     "ledmask", "ledtherapy", "microneedling",
     "chemicalexfoliant", "ahaskincare", "bhaskincare",
@@ -64,8 +64,8 @@ HASHTAGS_TIER2 = [
     "antiaging", "peptides", "ceramides", "snailmucin",
     "slugging", "skincareingredients",
     "gelcleanser", "foamcleanser", "micellarwater",
-    "tonerandserum", "eyecream", "neckcare",
-    "bodycare", "bodyskincare", "exfoliation",
+    "tonerandserum", "eyecream",
+    "bodyskincare", "exfoliation",
 ]
 
 HASHTAGS_DEVICES = [
@@ -389,22 +389,39 @@ class DiscoveryScraper:
     def scrape_instagram_hashtag(self, hashtag: str,
                                   max_posts: int = 100) -> list[VideoSignal]:
         """
-        Scrapes a single Instagram hashtag using apify/instagram-scraper.
+        Scrapes a single Instagram hashtag — kept for one-off testing.
+        For full weekly runs use scrape_instagram_batch() instead.
+        """
+        return self.scrape_instagram_batch([hashtag], max_posts_per_hashtag=max_posts)
+
+    def scrape_instagram_batch(self, hashtags: list[str],
+                                max_posts_per_hashtag: int = 100) -> list[VideoSignal]:
+        """
+        Scrapes all Instagram hashtags in a single batched actor call.
+
+        Passes all URLs via directUrls — one run, one dataset, one billing event.
+        ~19× cheaper on actor overhead vs. 19 separate calls.
+
+        Cost: ~$2.30/1,000 posts × (19 × 100) = ~$4.37 typical full run
+              single-hashtag test @ 10 posts   = ~$0.02
 
         Uses ApifyClientAsync (required by apify-client >= 1.x, Python >= 3.11).
-        The async call is wrapped in asyncio.run() so the rest of the pipeline
-        stays synchronous.
+        Wrapped in asyncio.run() so the rest of the pipeline stays synchronous.
 
         Field notes (apify/instagram-scraper response):
           call_result.default_dataset_id  — attribute access, not dict key
           list_items_result.items         — list of post dicts
         """
-        logger.info(f"    Scraping IG #{hashtag} (max {max_posts} posts)")
-        guard("Instagram scraper: #" + hashtag,
-              COST_ESTIMATES.get("apify_instagram_single", 0.10))
+        logger.info(f"    Scraping IG batch: {len(hashtags)} hashtags "
+                    f"({max_posts_per_hashtag} posts each)")
+        guard(f"Instagram scraper: batch {len(hashtags)} hashtags",
+              COST_ESTIMATES.get("apify_instagram_batch", 4.50))
 
         import asyncio
         from apify_client import ApifyClientAsync
+
+        direct_urls    = [f"https://www.instagram.com/explore/tags/{ht}/" for ht in hashtags]
+        seven_days_ago = self.seven_days_ago
 
         async def _fetch() -> list[dict]:
             client       = ApifyClientAsync(self.token)
@@ -412,16 +429,14 @@ class DiscoveryScraper:
 
             call_result = await actor_client.call(run_input={
                 "resultsType":        "posts",
-                "search":             hashtag,
-                "searchType":         "hashtag",
-                "searchLimit":        1,       # one hashtag per call
-                "resultsLimit":       max_posts,
+                "directUrls":         direct_urls,
+                "resultsLimit":       max_posts_per_hashtag,
                 "addParentData":      False,   # follower count skipped — extra cost
-                "onlyPostsNewerThan": self.seven_days_ago,
+                "onlyPostsNewerThan": seven_days_ago,
             })
 
             if call_result is None:
-                logger.warning(f"    IG actor returned None for #{hashtag}")
+                logger.warning(f"    IG batch actor returned None")
                 return []
 
             dataset_client    = client.dataset(call_result.default_dataset_id)
@@ -431,7 +446,7 @@ class DiscoveryScraper:
         try:
             raw_items = asyncio.run(_fetch())
         except Exception as e:
-            logger.warning(f"    Instagram scrape failed for #{hashtag}: {e}")
+            logger.warning(f"    Instagram batch scrape failed: {e}")
             return []
 
         posts = []
@@ -440,8 +455,7 @@ class DiscoveryScraper:
             if v and (not v.posted_date or v.posted_date >= self.seven_days_ago):
                 posts.append(v)
 
-        logger.info(f"    → {len(posts)} recent posts from IG #{hashtag}")
-        time.sleep(3)
+        logger.info(f"    → {len(posts)} recent posts from IG batch ({len(hashtags)} hashtags)")
         return posts
 
     def run_hashtag_discovery(self, run_devices: bool = False,
@@ -461,14 +475,9 @@ class DiscoveryScraper:
         return all_videos
 
     def run_instagram_discovery(self) -> list[VideoSignal]:
-        """Runs all Instagram hashtag scrapes."""
-        all_posts = []
-
-        logger.info(f"\n  Instagram hashtag discovery: {len(INSTAGRAM_HASHTAGS)} hashtags")
-        for ht in INSTAGRAM_HASHTAGS:
-            posts = self.scrape_instagram_hashtag(ht, max_posts=100)
-            all_posts.extend(posts)
-
+        """Runs all Instagram hashtag scrapes in a single batched actor call."""
+        logger.info(f"\n  Instagram hashtag discovery: {len(INSTAGRAM_HASHTAGS)} hashtags (batched)")
+        all_posts = self.scrape_instagram_batch(INSTAGRAM_HASHTAGS, max_posts_per_hashtag=100)
         logger.info(f"  Total from Instagram hashtags: {len(all_posts)} posts")
         return all_posts
 
