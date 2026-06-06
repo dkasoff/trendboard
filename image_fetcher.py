@@ -56,11 +56,11 @@ def _unsplash(photo_id: str) -> str:
 # To replace a broken one: find a new ID on unsplash.com, curl-test it, update here.
 CATEGORY_IMAGES = {
     "moisturizer":         _unsplash("photo-1556228720-195a672e8a03"),  # pastel cream jar
-    "serum":               "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
+    "serum":               _unsplash("photo-1620916566398-39f1143ab7be"),  # dropper bottle
     "cleanser":            _unsplash("photo-1556228578-8c89e6adf883"),   # foam cleanser
     "sunscreen":           _unsplash("photo-1505944270255-72b8c68c6a70"),  # SPF lotion
-    "toner":               "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1673628551192-ca9aca8b57f0&w=500&h=500&fit=cover&output=webp",
-    "exfoliant":           "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1677850271710-49fda851db22&w=500&h=500&fit=cover&output=webp",
+    "toner":               _unsplash("photo-1616394584738-fc6e612e71b9"),  # clear bottle
+    "exfoliant":           _unsplash("photo-1570172619644-dfd03ed5d881"),  # facial exfoliant treatment
     "retinoid":            _unsplash("photo-1596755389378-c31d21fd1273"),  # night cream
     "eye_treatment":       _unsplash("photo-1512290923902-8a9f81dc236c"),  # eye area
     "mask":                _unsplash("photo-1596462502278-27bfdc403348"),  # face mask
@@ -68,13 +68,13 @@ CATEGORY_IMAGES = {
     "led_device":          _unsplash("photo-1598440947619-2c35fc9aa908"),  # skincare device
     "lip_care":            _unsplash("photo-1599305445671-ac291c95aaa9"),  # lip product
     "body_care":           _unsplash("photo-1471107340929-a87cd0f5b5f3"),  # body lotion
-    "microcurrent":        "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1734468965603-d26738eb6ed0&w=500&h=500&fit=cover&output=webp",  # woman holding compact device
-    "microcurrent_device": "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1734468965603-d26738eb6ed0&w=500&h=500&fit=cover&output=webp",
+    "microcurrent":        _unsplash("qDO68fAdK0o"),  # facial device treatment
+    "microcurrent_device": _unsplash("qDO68fAdK0o"),
     "foundation":          _unsplash("photo-1522335789203-aabd1fc54bc9"),  # makeup flatlay
     "foundation_base":     _unsplash("photo-1522335789203-aabd1fc54bc9"),
     "spf":                 _unsplash("photo-1505944270255-72b8c68c6a70"),
-    "essence":             "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
-    "serum_essence":       "https://wsrv.nl/?url=plus.unsplash.com/premium_photo-1674739375749-7efe56fc8bbb&w=500&h=500&fit=cover&output=webp",
+    "essence":             _unsplash("photo-1620916566398-39f1143ab7be"),
+    "serum_essence":       _unsplash("photo-1620916566398-39f1143ab7be"),
 }
 
 # ── TEST-MODE product image fallbacks ─────────────────────────────────────────
@@ -94,134 +94,64 @@ TEST_PRODUCT_IMAGES = {
 }
 
 
-# ── DUCKDUCKGO IMAGE SEARCH — product images ──────────────────────────────────
-# Free, no API key, no account required.
-# Uses DDG's unofficial image search endpoint (same engine that powers the
-# Images tab on duckduckgo.com). Stable since 2019; no known rate limits at
-# our usage level (25 queries/week).
+# ── GOOGLE CSE — product image search ────────────────────────────────────────
 
-import re as _re
-
-_DDG_HEADERS = {
-    "User-Agent":      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                       "AppleWebKit/537.36 (KHTML, like Gecko) "
-                       "Chrome/124.0.0.0 Safari/537.36",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Referer":         "https://duckduckgo.com/",
-}
-
-# Retailer page domains to prefer when picking image results.
-# Results whose *page* URL comes from these domains get priority over
-# random blogs, Pinterest, Reddit, etc.
-_PREFERRED_DOMAINS = (
-    "amazon.com", "sephora.com", "ulta.com", "target.com",
-    "walmart.com", "dermstore.com", "lookfantastic.com",
-    "cerave.com", "neutrogena.com", "laroche-posay.com",
-    "theordinary.com", "paulaschoice.com", "cosrx.com",
-)
-
-# Image CDN domains that block third-party proxy requests (wsrv.nl gets 404).
-# These are detected by domain in the *image* URL, not the page URL.
-# We skip results whose image lives on these CDNs and try the next result.
-_BLOCKED_IMAGE_CDNS = (
-    "sephora.com/productimages",   # Sephora CDN — hotlink-blocked
-    "m.media-amazon.com",          # Amazon CDN — hotlink-blocked by wsrv.nl
-    "pinimg.com",                  # Pinterest CDN
-    "fbcdn.net",                   # Facebook/Instagram CDN
-    "cdninstagram.com",            # Instagram CDN
-    "lookaside.fbsbx.com",         # Facebook CDN
-)
-
-def _wsrv(image_url: str) -> str:
+def _google_image_search(query: str, fallback_query: str = "") -> str:
     """
-    Wrap an image URL in a wsrv.nl proxy for CORS-safe delivery.
-    wsrv.nl expects the URL *without* the https:// scheme prefix.
+    Calls Google Custom Search API (image mode) for a single result.
+    The CSE is configured to search retailer sites (Amazon, Sephora, etc.)
+    so results are always clean product shots.
+    Returns a wsrv.nl-proxied URL, or "" on failure.
     """
-    bare    = image_url.replace("https://", "").replace("http://", "")
-    encoded = urllib.parse.quote(bare, safe="/:@!$'()*+,;=?&")
-    return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
+    if not GOOGLE_CSE_API_KEY or not GOOGLE_CSE_CX:
+        logger.debug("Google CSE not configured — skipping product image fetch")
+        return ""
 
-
-def _is_blocked_cdn(image_url: str) -> bool:
-    """Returns True if the image URL is from a CDN known to block wsrv.nl."""
-    return any(cdn in image_url for cdn in _BLOCKED_IMAGE_CDNS)
-
-
-def _ddg_image_search(query: str, fallback_query: str = "") -> str:
-    """
-    Searches DuckDuckGo Images for a product photo.
-    Returns a wsrv.nl-proxied HTTPS URL, or "" on failure.
-
-    Flow:
-      1. GET duckduckgo.com/?q=... → extract the session token (vqd)
-      2. GET duckduckgo.com/i.js?q=...&vqd=... → JSON image results
-      3. Prefer results from known retailer domains; fall back to any HTTPS image
-      4. Proxy final URL through wsrv.nl
-    """
     for attempt, q in enumerate([query, fallback_query]):
         if not q:
             continue
         try:
-            # ── Step 1: get vqd session token ────────────────────────────────
-            encoded_q = urllib.parse.quote_plus(q)
-            init_url  = f"https://duckduckgo.com/?q={encoded_q}&iax=images&ia=images"
-            req = urllib.request.Request(init_url, headers=_DDG_HEADERS)
-            with urllib.request.urlopen(req, timeout=12) as resp:
-                html = resp.read().decode("utf-8", errors="replace")
-
-            # vqd token — try four patterns in order of specificity
-            vqd_match = (
-                _re.search(r'vqd="([^"]+)"',         html) or
-                _re.search(r"vqd='([^']+)'",          html) or
-                _re.search(r'data-vqd="([^"]+)"',     html) or
-                _re.search(r'vqd=([\w\-]+)',           html)   # widened: was [\d-]+
-            )
-            if not vqd_match:
-                logger.warning(f"DDG: vqd token not found for '{q}' — possible bot-challenge page")
-                continue
-            vqd = vqd_match.group(1)
-
-            # ── Step 2: fetch image results ───────────────────────────────────
             params = urllib.parse.urlencode({
-                "q":   q,
-                "vqd": vqd,
-                "p":   "1",
-                "s":   "0",
-                "f":   ",,,",
-                "l":   "us-en",
-                "o":   "json",
+                "key":        GOOGLE_CSE_API_KEY,
+                "cx":         GOOGLE_CSE_CX,
+                "q":          q,
+                "searchType": "image",
+                "num":        5,            # fetch top 5, pick best
+                "imgType":    "photo",
+                "safe":       "active",
+                "imgSize":    "medium",
             })
-            img_req = urllib.request.Request(
-                f"https://duckduckgo.com/i.js?{params}",
-                headers={**_DDG_HEADERS, "Accept": "application/json"},
-            )
-            with urllib.request.urlopen(img_req, timeout=12) as resp:
+            url = f"https://www.googleapis.com/customsearch/v1?{params}"
+
+            req = urllib.request.Request(url, headers={"Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
                 data = json.loads(resp.read())
 
-            results = data.get("results", [])[:15]
+            items = data.get("items", [])
+            if items:
+                # Prefer HTTPS; proxy through wsrv.nl to eliminate CORS issues
+                for item in items:
+                    link = item.get("link", "")
+                    if link.startswith("https://"):
+                        encoded = urllib.parse.quote(link.replace("https://", ""), safe="")
+                        return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
+                # fallback: take first result even if HTTP
+                link = items[0].get("link", "")
+                if link:
+                    encoded = urllib.parse.quote(link.replace("https://", "").replace("http://", ""), safe="")
+                    return f"https://wsrv.nl/?url={encoded}&w=300&h=300&fit=cover&output=webp"
 
-            # ── Step 3a: prefer images from known retailer pages ──────────────
-            for result in results:
-                page_url = result.get("url", "")
-                img_url  = result.get("image", "")
-                if (img_url.startswith("https://")
-                        and not _is_blocked_cdn(img_url)
-                        and any(d in page_url for d in _PREFERRED_DOMAINS)):
-                    logger.debug(f"  DDG: retailer hit — {page_url[:60]}")
-                    return _wsrv(img_url)
-
-            # ── Step 3b: fall back to any proxiable HTTPS image ───────────────
-            for result in results:
-                img_url = result.get("image", "")
-                if img_url.startswith("https://") and not _is_blocked_cdn(img_url):
-                    logger.debug(f"  DDG: generic hit — {img_url[:60]}")
-                    return _wsrv(img_url)
-
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                logger.warning("Google CSE rate limit — sleeping 30s")
+                time.sleep(30)
+            else:
+                logger.warning(f"Google CSE HTTP {e.code} for: {q}")
         except Exception as e:
-            logger.warning(f"DDG image search error for '{q}': {e}")
+            logger.warning(f"Google CSE error for '{q}': {e}")
 
         if attempt == 0:
-            time.sleep(1.5)   # pause before trying fallback query
+            time.sleep(1)   # brief pause before fallback query
 
     return ""
 
@@ -251,21 +181,14 @@ def fetch_product_image(brand: str, product_name: str,
     Returns the best image URL for a specific branded product.
 
     TEST_MODE: returns a hardcoded wsrv.nl URL from TEST_PRODUCT_IMAGES (no API).
-    LIVE_MODE: searches DuckDuckGo Images — free, no key required.
+    LIVE_MODE: queries Google CSE (retailer sites) for the exact product shot.
 
     Args:
         brand:              e.g. "CeraVe"
         product_name:       e.g. "Moisturizing Cream"
         product_type_label: e.g. "Moisturizer" (used in fallback query)
     """
-    # ── Deduplicate brand prefix ──────────────────────────────────────────────
-    # Guard against product_name already containing the brand
-    # e.g. brand="Foreo", product_name="Foreo Microcurrent Device"
-    # → clean_name="Microcurrent Device" → full_name="Foreo Microcurrent Device"
-    clean_name = product_name.strip()
-    if clean_name.lower().startswith(brand.strip().lower()):
-        clean_name = clean_name[len(brand.strip()):].strip()
-    full_name = f"{brand.strip()} {clean_name}".strip()
+    full_name = f"{brand} {product_name}".strip()
 
     # ── TEST MODE ─────────────────────────────────────────────────────────────
     if is_test_mode():
@@ -275,15 +198,15 @@ def fetch_product_image(brand: str, product_name: str,
             logger.debug(f"  [test] product image: {key}")
         return url
 
-    # ── LIVE MODE — DuckDuckGo image search ──────────────────────────────────
-    # Exclude social/lifestyle sites that dominate generic results
-    exclusions = "-pinterest -reddit -instagram -tumblr"
-    primary  = f"{full_name} skincare product {exclusions}"
-    fallback = f"{full_name} {product_type_label} {exclusions}" if product_type_label else f"{full_name} buy"
+    # ── LIVE MODE — Google CSE ────────────────────────────────────────────────
+    # Primary: exact brand + product name (finds the product listing on Amazon/Sephora)
+    # Fallback: broader query using product type
+    primary  = f"{full_name} product"
+    fallback = f"{brand} {product_type_label} skincare" if product_type_label else f"{full_name} skincare"
 
     logger.info(f"  Fetching product image: {full_name}")
-    url = _ddg_image_search(primary, fallback)
-    time.sleep(1.0)     # polite delay between products
+    url = _google_image_search(primary, fallback)
+    time.sleep(0.5)     # stay well within free-tier rate limits
     return url
 
 
