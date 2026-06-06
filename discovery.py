@@ -246,16 +246,23 @@ def parse_instagram_post(raw: dict) -> VideoSignal | None:
     """
     try:
         post_id = str(raw.get("id") or raw.get("shortCode", ""))
-        owner_id = str(raw.get("ownerId") or raw.get("ownerUsername", ""))
-        handle  = str(raw.get("ownerUsername", ""))
         caption = str(raw.get("caption") or "")
 
         if not post_id or not caption.strip():
             return None
 
-        likes    = int(raw.get("likesCount")    or 0)
-        comments = int(raw.get("commentsCount") or 0)
-        ts       = str(raw.get("timestamp", ""))
+        # Instagram "Limited permissions" for hashtag scrapes means ownerId and
+        # ownerUsername are not returned. Fall back to shortCode as a unique
+        # creator proxy for deduplication — not ideal but prevents empty IDs
+        # collapsing all posts into one bucket.
+        handle   = str(raw.get("ownerUsername", ""))
+        owner_id = str(raw.get("ownerId") or raw.get("ownerUsername") or raw.get("shortCode", post_id))
+
+        # Instagram hides like counts on most posts → returns -1. Treat as 0.
+        raw_likes = raw.get("likesCount")
+        likes     = max(int(raw_likes or 0), 0)
+        comments  = int(raw.get("commentsCount") or 0)
+        ts        = str(raw.get("timestamp", ""))
 
         # Hashtags come pre-parsed as a list from this actor
         hashtags = [str(h).lower().lstrip("#") for h in (raw.get("hashtags") or [])]
