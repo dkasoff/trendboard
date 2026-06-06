@@ -30,6 +30,12 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+# ─── SESSION SPEND TRACKER ───────────────────────────────────────────────────
+# Accumulates estimated cost across all guard() calls in one pipeline run.
+# Compared against SPEND_CAP_USD before every paid call — halts if exceeded.
+
+_session_spend: float = 0.0
+
 # ─── COST ESTIMATES ──────────────────────────────────────────────────────────
 
 COST_ESTIMATES = {
@@ -65,14 +71,17 @@ def guard(service: str, estimated_cost: float = None):
     Call this before every paid API call.
 
     In TEST_MODE:  raises LiveCallBlockedError immediately.
-    In LIVE_MODE:  checks for LIVE_APPROVED=true, logs cost warning,
-                   then allows the call through.
+    In LIVE_MODE:  checks LIVE_APPROVED, enforces SPEND_CAP_USD,
+                   logs cumulative cost, then allows the call through.
 
     Args:
         service:        Human-readable name of the service being called.
         estimated_cost: Estimated USD cost for this call (optional).
     """
-    cost_str = f"  Estimated cost: ${estimated_cost:.2f}" if estimated_cost is not None else ""
+    global _session_spend
+
+    cost     = estimated_cost or 0.0
+    cost_str = f"  Estimated cost: ${cost:.2f}" if estimated_cost is not None else ""
 
     if is_test_mode():
         raise LiveCallBlockedError(
@@ -107,14 +116,34 @@ def guard(service: str, estimated_cost: float = None):
             f"{'='*60}"
         )
 
-    # Approved — log a clear warning and proceed
+    # ── SPEND CAP CHECK ──────────────────────────────────────────────────────
+    cap = float(os.getenv("SPEND_CAP_USD", "9999"))
+    if _session_spend + cost > cap:
+        raise LiveCallBlockedError(
+            f"\n"
+            f"{'='*60}\n"
+            f"  🛑 SPEND CAP REACHED — RUN HALTED\n"
+            f"{'='*60}\n"
+            f"  Service:      {service}\n"
+            f"  This call:    ${cost:.2f}\n"
+            f"  Spent so far: ${_session_spend:.2f}\n"
+            f"  Cap:          ${cap:.2f}\n"
+            f"  Would reach:  ${_session_spend + cost:.2f}\n"
+            f"\n"
+            f"  To allow more spending, raise SPEND_CAP_USD in .env.\n"
+            f"{'='*60}"
+        )
+
+    # Approved and under cap — log and proceed
+    _session_spend += cost
     banner = (
         f"\n"
         f"{'='*60}\n"
         f"  💳 LIVE API CALL — REAL MONEY BEING SPENT\n"
         f"{'='*60}\n"
-        f"  Service:  {service}\n"
+        f"  Service:       {service}\n"
         f"{cost_str}\n"
+        f"  Session total: ${_session_spend:.2f} / ${cap:.2f} cap\n"
         f"{'='*60}"
     )
     logger.warning(banner)
@@ -126,6 +155,12 @@ def status() -> str:
     if is_test_mode():
         return "🧪 TEST MODE — no real API calls will be made"
     approved = os.getenv("LIVE_APPROVED", "false").strip().lower()
+    cap = os.getenv("SPEND_CAP_USD", "no cap")
     if approved in ("true", "1", "yes"):
-        return "💳 LIVE MODE — real API calls APPROVED — charges may apply"
+        return f"💳 LIVE MODE — APPROVED — cap: ${cap}"
     return "⚠️  LIVE MODE — real API calls NOT yet approved (set LIVE_APPROVED=true)"
+
+
+def get_session_spend() -> float:
+    """Returns the cumulative estimated spend for this pipeline run."""
+    return _session_spend

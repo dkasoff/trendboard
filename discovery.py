@@ -475,7 +475,35 @@ class DiscoveryScraper:
         return all_videos
 
     def run_instagram_discovery(self) -> list[VideoSignal]:
-        """Runs all Instagram hashtag scrapes in a single batched actor call."""
+        """
+        Runs Instagram hashtag discovery.
+
+        If INSTAGRAM_DATASET_ID is set in .env, fetches from that existing
+        Apify dataset instead of re-running the actor — free, no guard() call.
+        This lets you reuse a dataset from a manual run the same day.
+
+        Otherwise runs a fresh batched scrape across all INSTAGRAM_HASHTAGS.
+        """
+        dataset_id = os.getenv("INSTAGRAM_DATASET_ID", "").strip()
+
+        if dataset_id:
+            logger.info(f"\n  Instagram: reusing existing dataset {dataset_id} (no charge)")
+            try:
+                raw_items = list(self.client.dataset(dataset_id).iterate_items())
+            except Exception as e:
+                logger.warning(f"  Failed to fetch existing dataset {dataset_id}: {e}")
+                raw_items = []
+
+            posts = []
+            for item in raw_items:
+                v = parse_instagram_post(item)
+                if v and (not v.posted_date or v.posted_date >= self.seven_days_ago):
+                    posts.append(v)
+
+            logger.info(f"  Total from Instagram dataset: {len(posts)} posts")
+            return posts
+
+        # No cached dataset — run a fresh batched scrape
         logger.info(f"\n  Instagram hashtag discovery: {len(INSTAGRAM_HASHTAGS)} hashtags (batched)")
         all_posts = self.scrape_instagram_batch(INSTAGRAM_HASHTAGS, max_posts_per_hashtag=100)
         logger.info(f"  Total from Instagram hashtags: {len(all_posts)} posts")
