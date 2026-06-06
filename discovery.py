@@ -258,7 +258,11 @@ def parse_instagram_post(raw: dict) -> VideoSignal | None:
         handle   = str(raw.get("ownerUsername", ""))
         owner_id = str(raw.get("ownerId") or raw.get("ownerUsername") or raw.get("shortCode", post_id))
 
-        # Instagram hides like counts on most posts → returns -1. Treat as 0.
+        # Instagram likesCount semantics:
+        #   -1  = account has disabled like count display (data unavailable)
+        #    0  = like count is visible but post has zero likes
+        #   >0  = true displayed like count
+        # Treat -1 as 0 for scoring — we simply have no signal for hidden-like posts.
         raw_likes = raw.get("likesCount")
         likes     = max(int(raw_likes or 0), 0)
         comments  = int(raw.get("commentsCount") or 0)
