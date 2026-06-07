@@ -48,7 +48,7 @@ SPONSORED_DISCOUNT         = 0.50
 ORGANIC_BOOST              = 1.50
 CROSS_POLLINATION_MIN      = 3
 
-TS_NEW_ENTRY_THRESHOLD     = 60
+TS_NEW_ENTRY_THRESHOLD     = 35
 HISTORY_WINDOW_DAYS        = 180
 
 # [FIX 6] Continuous longevity multiplier table
@@ -428,7 +428,7 @@ def classify_state(final_ts: float, velocity_score: float,
         return "STAPLE", acceleration
 
     # TRENDING
-    if final_ts >= 40:
+    if final_ts >= 20:
         return "TRENDING", acceleration
 
     return "BELOW_THRESHOLD", acceleration

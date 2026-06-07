@@ -250,7 +250,7 @@ Reply with ONLY the type_id (e.g. "serum", "toner", "moisturizer"). Nothing else
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
         response = client.messages.create(
-            model="claude-haiku-4-5",
+            model="claude-haiku-4-5-20251001",
             max_tokens=20,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -274,15 +274,18 @@ Reply with ONLY the type_id (e.g. "serum", "toner", "moisturizer"). Nothing else
 
 def classify(brand: str, product_type_raw: str, caption: str = "") -> str:
     """
-    Classifies a product into a taxonomy type_id.
-    Tries static matching first, falls back to Claude if needed.
+    Classifies a product into a taxonomy type_id using static keyword matching only.
+    Claude fallback is disabled — it made too many background API calls.
+    Unknown products default to 'other' and get classified by the category word
+    Claude returns in the extraction step.
     """
     result = classify_static(brand, product_type_raw, caption)
     if result:
         return result
-
-    logger.debug(f"Static match failed for '{brand} {product_type_raw}' — trying Claude fallback")
-    return classify_with_claude(brand, product_type_raw, caption)
+    # Default to the raw category string if it's a known type_id, else 'other'
+    if product_type_raw.lower() in _TYPE_ID_TO_META:
+        return product_type_raw.lower()
+    return "other"
 
 
 def get_label(type_id: str) -> str:

@@ -51,7 +51,7 @@ Examples of good style:
 - "A wave of before-and-afters is turning skeptics into believers"
 """
         msg = client.messages.create(
-            model="claude-haiku-20240307",
+            model="claude-haiku-4-5-20251001",
             max_tokens=60,
             messages=[{"role": "user", "content": prompt}]
         )

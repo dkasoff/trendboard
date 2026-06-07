@@ -16,7 +16,7 @@ import os
 import json
 import time
 import logging
-from datetime import date, datetime
+from datetime import date
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -47,27 +47,37 @@ from buy_links      import enrich_products_with_buy_links
 
 TIKTOK_JSON        = "tiktok_recovered.json"
 INSTAGRAM_DATASET  = os.getenv("INSTAGRAM_DATASET_ID", "dmtLJPA7BN3nhPq8d")
-SEVEN_DAYS_AGO     = (datetime.utcnow().replace(hour=0,minute=0,second=0,microsecond=0)
-                      - __import__('datetime').timedelta(days=7)).strftime("%Y-%m-%d")
 
 
 def load_tiktok_videos():
+    """
+    Loads ALL TikTok videos — no date filter.
+    Recency is handled as a scoring weight inside ProductExtractor,
+    not as a binary cutoff. Every video we paid to scrape is used.
+    """
     logger.info(f"  Loading TikTok data from {TIKTOK_JSON}...")
     with open(TIKTOK_JSON) as f:
         raw_items = json.load(f)
     logger.info(f"  Raw TikTok items: {len(raw_items)}")
 
     videos = []
+    skipped = 0
     for item in raw_items:
         v = parse_tiktok_video(item)
-        if v and (not v.posted_date or v.posted_date >= SEVEN_DAYS_AGO):
+        if v:
             videos.append(v)
+        else:
+            skipped += 1
 
-    logger.info(f"  TikTok VideoSignals (within 7 days): {len(videos)}")
+    logger.info(f"  TikTok VideoSignals: {len(videos)} (skipped {skipped} unparseable)")
     return videos
 
 
 def load_instagram_posts():
+    """
+    Loads ALL Instagram posts — no date filter.
+    Same recency-weighting approach as TikTok.
+    """
     logger.info(f"  Fetching Instagram dataset {INSTAGRAM_DATASET} (no charge)...")
     import asyncio
     from apify_client import ApifyClientAsync
@@ -85,12 +95,15 @@ def load_instagram_posts():
     logger.info(f"  Raw Instagram items: {len(raw_items)}")
 
     posts = []
+    skipped = 0
     for item in raw_items:
         v = parse_instagram_post(item)
-        if v and (not v.posted_date or v.posted_date >= SEVEN_DAYS_AGO):
+        if v:
             posts.append(v)
+        else:
+            skipped += 1
 
-    logger.info(f"  Instagram VideoSignals (within 7 days): {len(posts)}")
+    logger.info(f"  Instagram VideoSignals: {len(posts)} (skipped {skipped} unparseable)")
     return posts
 
 
@@ -222,8 +235,8 @@ def run():
             f"  {icon}#{cat['rank']:<2}  {cat['type_label']:<22}  "
             f"{cat['category_ts']:>6.1f}  {cat['product_count']:>8}  {cat['state']}"
         )
-    logger.info(f"\n  TikTok:    {tiktok_count} signals (recovered from 71 Apify datasets)")
-    logger.info(f"  Instagram: {ig_count} signals (dataset {INSTAGRAM_DATASET})")
+    logger.info(f"\n  TikTok:    {tiktok_count} signals — ALL dates, recency-weighted (71 Apify datasets)")
+    logger.info(f"  Instagram: {ig_count} signals — ALL dates, recency-weighted (dataset {INSTAGRAM_DATASET})")
     logger.info(f"  New Apify spend: $0.00")
     logger.info(f"\n{'='*65}\n")
 

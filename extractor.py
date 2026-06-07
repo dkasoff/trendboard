@@ -2,145 +2,132 @@
 trendboard.fyi — Skincare Product Extractor
 ============================================
 Takes raw TikTok/Instagram video captions and extracts
-product candidates using pattern matching and brand recognition.
+product candidates using Claude AI — no fixed keyword dictionary.
 
-This is the intelligence layer between raw scrape data
-and the scoring engine. It answers one question:
-"What specific product is this creator talking about?"
+Claude reads each caption as a human would, identifying specific
+named skincare/beauty products regardless of whether the brand
+was pre-programmed. This is the core intelligence of Trendboard.
 
-Two extraction methods:
-1. Brand + Product pattern matching (high confidence)
-2. Ingredient-as-product detection (medium confidence)
+Recency weighting (not hard cutoff):
+  All scraped videos are used. Posts from the last 7 days contribute
+  full weight to trend scores; older posts contribute less but are
+  NOT discarded — they provide baseline signal for velocity calculation.
 
-A product passes extraction when it has:
-- A recognizable brand name OR a clear product type
-- Mentioned by 5+ unique creators in 7 days
-- Not on the exclusion list (too generic, not buyable)
+  Age weights:
+    0-7 days:   1.0  (peak signal)
+    8-14 days:  0.7
+    15-21 days: 0.5
+    22-30 days: 0.3
+    30+ days:   0.1  (baseline only)
+
+A product qualifies for scoring when it has:
+  - At least 2 weighted-unique creators
+  - Mentioned by Claude across multiple captions
+  - Positive sentiment outweighs negative
+
+Usage:
+    extractor = ProductExtractor()
+    candidates = extractor.process_videos(videos, min_creators=2)
 """
 
+import os
 import re
+import json
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime, date
 import taxonomy
 
+logger = logging.getLogger(__name__)
 
 # ── SMART TITLE CASE ─────────────────────────────────────────────────────────
-# Python's built-in str.title() has two problems for product names:
-#   1. Capitalises after apostrophes → "paula's" → "Paula'S"
-#   2. Doesn't know acronyms        → "bha"     → "Bha" (should be "BHA")
-# This replaces it throughout the extractor.
 
 _ACRONYMS = {
-    "bha", "aha", "pha", "lha",       # chemical exfoliants
-    "spf", "uva", "uvb", "uv",        # sun protection
-    "led",                             # devices
-    "ha",                              # hyaluronic acid (when standalone)
-    "dna", "asc",                      # other abbreviations
+    "bha", "aha", "pha", "lha", "spf", "uva", "uvb", "uv",
+    "led", "ha", "dna", "asc",
 }
 
 def _smart_title(text: str) -> str:
-    """
-    Title-case a brand or product string correctly:
-    - Capitalises first letter of each space-separated word (not after apostrophes)
-      "paula's" → "Paula's"  (not "Paula'S" as str.title() produces)
-    - Capitalises after hyphens: "la roche-posay" → "La Roche-Posay"
-    - Uppercases known skincare acronyms: "bha" → "BHA", "spf" → "SPF"
-    - Leaves numeric tokens untouched: "10%", "96", "+zinc"
-    """
     def _cap(word: str) -> str:
-        if not word:
-            return word
-        if word.lower() in _ACRONYMS:
-            return word.upper()
-        if not word[0].isalpha():
-            return word                    # "10%", "2%", "+zinc" → unchanged
-        # Capitalise after hyphens only (not apostrophes)
+        if not word: return word
+        if word.lower() in _ACRONYMS: return word.upper()
+        if not word[0].isalpha(): return word
         parts = word.split("-")
         return "-".join(p[0].upper() + p[1:] if p else p for p in parts)
-
     return " ".join(_cap(w) for w in text.split())
 
 
-# ─── BRAND REGISTRY ──────────────────────────────────────────────────────────
-# Organized by tier. Tier 1 = highest signal (derm-recommended or viral).
-# When a Tier 1 brand appears in a caption, it's almost always a product mention.
+# ── DATA STRUCTURES ──────────────────────────────────────────────────────────
 
-BRANDS_TIER1 = {
-    # K-Beauty — currently dominant category on TikTok Shop
-    "medicube", "anua", "cosrx", "innisfree", "laneige", "sulwhasoo",
-    "dr melaxin", "dr melaxin", "some by mi", "isntree", "tirtir",
-    "beauty of joseon", "round lab", "klairs", "axis-y", "purito",
-    "torriden", "rovectin", "skin1004", "tocobo", "numbuzin",
-    "d'Alba", "aestura", "dr jart", "etude house", "missha",
-    "holika holika", "tony moly", "skinfood", "iunik",
+@dataclass
+class VideoSignal:
+    """One TikTok or Instagram video/post."""
+    video_id: str
+    creator_id: str
+    creator_handle: str
+    caption: str
+    hashtags: list
+    like_count: int
+    comment_count: int
+    share_count: int
+    follower_count: int
+    posted_date: str
+    platform: str        # "tiktok" or "instagram"
+    is_sponsored: bool
 
-    # Derm-recommended US brands
-    "cetaphil", "cerave", "la roche-posay", "vanicream", "aveeno",
-    "neutrogena", "differin", "paula's choice", "the ordinary",
-    "drunk elephant", "tatcha", "skinceuticals", "obagi",
-    "peter thomas roth", "murad", "dermalogica", "epionce",
-    "isdin", "elta md", "supergoop", "colorescience",
 
-    # Trending indie/viral brands
-    "naturium", "good molecules", "inkey list", "versed",
-    "hero cosmetics", "starface", "mighty patch", "snif",
-    "rhode", "rare beauty", "tower 28", "ilia", "jones road",
-    "summer fridays", "glow recipe", "kosas", "merit",
-    "byoma", "topicals", "flora and fauna", "loops beauty",
-    "selfless by hyram", "twentysomething", "facetory",
+@dataclass
+class ProductCandidate:
+    """A product identified across multiple creator captions."""
+    product_key: str
+    display_name: str
+    brand: str
+    product_type: str
+    category: str
 
-    # Devices
-    "foreo", "nuface", "currentbody", "lightstim", "omnilux",
-    "solawave", "ziip", "theraface", "hangsun", "project e beauty",
-    "trophy skin", "silk'n", "ulike", "braun", "philips lumea",
-    "tria", "nood", "jovs",
-}
+    # Signal counts (raw)
+    unique_creator_count: int  = 0
+    total_video_count: int     = 0
+    sponsored_count: int       = 0
+    organic_count: int         = 0
+    strong_signal_count: int   = 0
+    negative_signal_count: int = 0
 
-BRANDS_TIER2 = {
-    # Broader beauty brands — still strong signal
-    "charlotte tilbury", "nars", "fenty", "fenty beauty", "mac",
-    "urban decay", "too faced", "benefit", "clinique", "estee lauder",
-    "lancome", "givenchy beauty", "dior beauty", "ysl beauty",
-    "georgio armani beauty", "hourglass", "pat mcgrath", "bobbi brown",
-    "fresh", "origins", "kiehls", "origins", "ole henriksen",
-    "first aid beauty", "youth to the people", "true botanicals",
-    "alpyn beauty", "herbivore", "tata harper", "sunday riley",
-    "biossance", "acure", "yes to", "burt's bees",
-}
+    # Recency-weighted creator score (used for velocity ranking)
+    # Higher = more recent creator activity
+    weighted_creator_score: float = 0.0
 
-ALL_BRANDS = BRANDS_TIER1 | BRANDS_TIER2
+    # Creator tier breakdown
+    nano_creators: int   = 0   # <10k followers
+    micro_creators: int  = 0   # 10k-100k
+    macro_creators: int  = 0   # 100k-1M
+    mega_creators: int   = 0   # 1M+
 
-# ─── PRODUCT TYPE PATTERNS ───────────────────────────────────────────────────
-# When a brand is paired with one of these, we have a specific product.
-# Also used standalone when the brand is a generic ingredient name.
+    # Engagement
+    total_likes: int     = 0
+    total_comments: int  = 0
+    total_shares: int    = 0
 
-PRODUCT_TYPES = [
-    "serum", "moisturizer", "cleanser", "toner", "essence", "ampoule",
-    "eye cream", "eye serum", "face oil", "face mist", "face mask",
-    "sheet mask", "sleeping mask", "overnight mask", "lip mask", "lip balm",
-    "spf", "sunscreen", "sun cream", "uv cream", "mineral sunscreen",
-    "exfoliant", "exfoliator", "aha", "bha", "pha", "chemical exfoliant",
-    "retinol", "retinoid", "tretinoin", "adapalene",
-    "vitamin c", "vit c", "ascorbic acid", "niacinamide",
-    "hyaluronic acid", "glycerin", "ceramide", "peptide",
-    "snail mucin", "propolis", "centella", "cica",
-    "led mask", "led device", "light therapy device", "red light",
-    "microcurrent device", "gua sha", "jade roller", "facial roller",
-    "pore vacuum", "blackhead remover", "comedone extractor",
-    "face steamer", "dermaplaning", "microneedling",
-    "micellar water", "cleansing oil", "cleansing balm",
-    "primer", "foundation", "concealer", "setting spray", "setting powder",
-    "blush", "bronzer", "highlighter", "contour", "eyeshadow",
-    "mascara", "liner", "lip liner", "lipstick", "lip gloss",
-    "brow gel", "brow pencil", "lash serum",
-    "body lotion", "body butter", "body oil", "body scrub",
-    "neck cream", "chest serum", "decolletage",
-    "hair growth serum", "scalp serum", "hair oil",
-    "perfume", "fragrance", "eau de parfum", "edp", "cologne",
-]
+    # Creator IDs seen (for deduplication)
+    creator_ids: set = field(default_factory=set)
 
-# ─── STRONG SIGNAL PHRASES ───────────────────────────────────────────────────
-# When these appear in a caption near a product name, confidence is high.
+    # Top creator posts — stored for attribution engine
+    top_creator_posts: list = field(default_factory=list)
+
+    # Confidence
+    confidence: float    = 0.0
+
+    # Google Trends keyword
+    google_keyword: str  = ""
+
+    # Taxonomy
+    product_type_id: str    = ""
+    product_type_label: str = ""
+    product_type_emoji: str = ""
+
+
+# ── SIGNAL PHRASES ───────────────────────────────────────────────────────────
 
 STRONG_SIGNAL_PHRASES = [
     "changed my skin", "holy grail", "game changer", "life changing",
@@ -163,9 +150,6 @@ NEGATIVE_PHRASES = [
     "counterfeit", "fake", "dupe is better",
 ]
 
-# ─── EXCLUSION LIST ──────────────────────────────────────────────────────────
-# Too generic to extract a specific product from.
-
 EXCLUSIONS = {
     "skincare", "beauty", "makeup", "routine", "tips", "hacks",
     "tutorial", "transformation", "glow up", "selfcare", "self care",
@@ -174,236 +158,342 @@ EXCLUSIONS = {
 }
 
 
-# ─── DATA STRUCTURES ─────────────────────────────────────────────────────────
+# ── RECENCY WEIGHTING ─────────────────────────────────────────────────────────
 
-@dataclass
-class VideoSignal:
-    """One TikTok or Instagram video."""
-    video_id: str
-    creator_id: str
-    creator_handle: str
-    caption: str
-    hashtags: list
-    like_count: int
-    comment_count: int
-    share_count: int
-    follower_count: int   # Creator's follower count
-    posted_date: str
-    platform: str         # "tiktok" or "instagram"
-    is_sponsored: bool    # Has #ad, #sponsored, #gifted
-
-
-@dataclass
-class ProductCandidate:
+def _recency_weight(posted_date_str: str, today_str: str) -> float:
     """
-    A product extracted from scrape data.
-    Becomes a scored product if it passes the velocity filter.
+    Returns a 0.1-1.0 weight based on how recently the post was made.
+    Uses the full date range — nothing is discarded.
     """
-    product_key: str          # Normalized name used as unique ID
-    display_name: str         # Human-readable name
-    brand: str                # Brand name if detected
-    product_type: str         # Serum, cleanser, etc.
-    category: str             # "Skincare", "Makeup", etc.
+    try:
+        posted = datetime.strptime(posted_date_str[:10], "%Y-%m-%d").date()
+        today  = datetime.strptime(today_str, "%Y-%m-%d").date()
+        days_old = (today - posted).days
+    except Exception:
+        return 0.5   # unknown date → neutral weight
 
-    # Signal counts
-    unique_creator_count: int = 0
-    total_video_count: int    = 0
-    sponsored_count: int      = 0
-    organic_count: int        = 0
-    strong_signal_count: int  = 0
-    negative_signal_count: int = 0
-
-    # Creator tier breakdown
-    nano_creators: int   = 0   # <10k followers
-    micro_creators: int  = 0   # 10k-100k
-    macro_creators: int  = 0   # 100k-1M
-    mega_creators: int   = 0   # 1M+
-
-    # Engagement
-    total_likes: int     = 0
-    total_comments: int  = 0
-    total_shares: int    = 0
-
-    # Creator IDs seen (for deduplication)
-    creator_ids: set = field(default_factory=set)
-
-    # Top creator posts — stored for attribution engine
-    # Each entry: {"handle": str, "followers": int, "date": str,
-    #              "likes": int, "caption": str, "is_sponsored": bool}
-    top_creator_posts: list = field(default_factory=list)
-
-    # Raw confidence score
-    confidence: float    = 0.0
-
-    # Search keyword for Google Trends
-    google_keyword: str  = ""
-
-    # Taxonomy classification
-    product_type_id: str    = ""   # e.g. "toner", "serum", "led_device"
-    product_type_label: str = ""   # e.g. "Toner", "Serum / Essence"
-    product_type_emoji: str = ""   # e.g. "🌊"
+    if days_old <= 7:  return 1.0
+    if days_old <= 14: return 0.7
+    if days_old <= 21: return 0.5
+    if days_old <= 30: return 0.3
+    return 0.1
 
 
-# ─── EXTRACTION ENGINE ────────────────────────────────────────────────────────
+# ── CLAUDE-POWERED EXTRACTION ─────────────────────────────────────────────────
+
+_SYSTEM_PROMPT = """You are a skincare trend analyst reading TikTok and Instagram captions.
+Your job: identify every specific named skincare or beauty PRODUCT mentioned in each caption.
+
+Rules:
+- Extract SPECIFIC products only — you must have BOTH a real brand name AND a real product name/identifier
+  Good: "Medicube Booster Shot Serum", "Rhode Peptide Lip Treatment", "Anua Heartleaf 77% Toner"
+  Bad:  "Anua Product", "Rhode Bronzer", "Medicube Cream", "Rare Beauty Blush" (too vague)
+- The product_name MUST be the actual product line/variant name, not a category word
+  Good product_name: "Heartleaf 77% Soothing Toner", "Advanced Snail 96 Mucin Power Essence", "Low pH Good Morning Gel Cleanser"
+  Bad product_name:  "Toner", "Serum", "Product", "Cream", "Beauty", "Cosmetics", "Makeup", "Skincare"
+- If a caption only mentions a brand name without a specific product, SKIP IT — do not output anything for that caption
+- Do NOT repeat the brand name as the product_name (e.g. "Medicube Medicube" is wrong)
+- Do NOT use generic words as product_name: Product, Item, Stuff, Beauty, Cosmetics, Skincare, Makeup, Formula
+- Do NOT extract vague product types alone: "serum", "moisturizer", "skincare routine"
+- Do NOT extract ingredients alone: "retinol", "niacinamide" — ONLY if paired with brand AND specific name
+- One caption can mention multiple products — list all of them
+- If no specific named product is identifiable, omit that caption entirely
+
+Return ONLY a JSON array (no explanation, no markdown):
+[
+  {"index": 1, "brand": "Medicube", "product_name": "Booster Shot Serum", "category": "serum"},
+  {"index": 4, "brand": "Rhode", "product_name": "Peptide Lip Treatment", "category": "lip_care"},
+  {"index": 4, "brand": "CeraVe", "product_name": "Foaming Facial Cleanser", "category": "cleanser"},
+  {"index": 7, "brand": "Anua", "product_name": "Heartleaf 77% Soothing Toner", "category": "toner"}
+]
+
+Valid categories: serum, moisturizer, cleanser, toner, essence, sunscreen, exfoliant,
+retinoid, eye_cream, face_oil, mask, lip_care, led_device, microcurrent_device,
+body_care, foundation, concealer, blush, bronzer, mascara, lip_color, fragrance, other"""
+
+
+def _repair_json_array(raw: str) -> list[dict]:
+    """
+    Extracts all complete {...} objects from a potentially truncated JSON array.
+    Handles cases where the response is cut off mid-object (token limit hit).
+    """
+    results = []
+    depth = 0
+    start = -1
+    for i, ch in enumerate(raw):
+        if ch == '{':
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == '}':
+            depth -= 1
+            if depth == 0 and start >= 0:
+                try:
+                    obj = json.loads(raw[start:i + 1])
+                    if isinstance(obj, dict):
+                        results.append(obj)
+                except Exception:
+                    pass
+                start = -1
+    return results
+
+
+def _extract_batch_with_claude(captions: list[str], indices: list[int]) -> list[dict]:
+    """
+    Sends a batch of captions to Claude Haiku and returns structured product extractions.
+    Captions are numbered 1..N locally within the batch (not by global video index).
+    Returns list of dicts with 'caption_index' set to the global video index.
+    """
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    except ImportError:
+        logger.warning("anthropic not installed — falling back to regex extraction")
+        return []
+
+    # Use LOCAL 1-based numbering so Claude's returned index maps directly
+    # to position within this batch (works identically for all batches).
+    numbered = "\n".join(
+        f"{local_i + 1}. {cap[:350]}"
+        for local_i, cap in enumerate(captions)
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4096,
+            system=_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": f"Captions:\n{numbered}"}]
+        )
+        raw = msg.content[0].text.strip()
+
+        # Strip markdown code fences if present
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+        # Try clean parse first; fall back to object-by-object repair
+        try:
+            objects = json.loads(raw)
+        except json.JSONDecodeError:
+            objects = _repair_json_array(raw)
+
+        # Map local 1-based index → global caption index
+        results = []
+        for r in objects:
+            local_idx = int(r.get("index", 0)) - 1   # 0-based position in batch
+            if 0 <= local_idx < len(indices):
+                r["caption_index"] = indices[local_idx]
+                results.append(r)
+        return results
+
+    except Exception as e:
+        logger.warning(f"Claude batch extraction failed: {e}")
+        return []
+
+
+# ── REGEX FALLBACK ────────────────────────────────────────────────────────────
+# Used when Claude API is unavailable. Keeps the pipeline runnable but with
+# lower recall — it only finds brands it was told about.
+
+_FALLBACK_BRANDS = {
+    "medicube", "anua", "cosrx", "innisfree", "laneige", "tirtir",
+    "beauty of joseon", "round lab", "torriden", "skin1004", "numbuzin",
+    "cetaphil", "cerave", "la roche-posay", "neutrogena", "vanicream",
+    "the ordinary", "drunk elephant", "paula's choice", "naturium",
+    "rhode", "rare beauty", "glow recipe", "kosas", "byoma",
+    "foreo", "nuface", "currentbody", "omnilux", "solawave",
+}
+
+_FALLBACK_TYPES = [
+    "serum", "moisturizer", "cleanser", "toner", "essence",
+    "sunscreen", "spf", "retinol", "exfoliant", "eye cream",
+    "led mask", "face wash", "face cream", "lip treatment",
+]
+
+def _extract_regex_fallback(caption: str) -> list[dict]:
+    """Simple regex fallback — lower recall, but zero API cost."""
+    caption_lower = caption.lower()
+    results = []
+
+    for brand in sorted(_FALLBACK_BRANDS, key=len, reverse=True):
+        if brand in caption_lower:
+            for ptype in _FALLBACK_TYPES:
+                if ptype in caption_lower:
+                    results.append({
+                        "brand":        _smart_title(brand),
+                        "product_name": _smart_title(ptype),
+                        "category":     ptype.replace(" ", "_"),
+                    })
+                    break
+            else:
+                results.append({
+                    "brand":        _smart_title(brand),
+                    "product_name": _smart_title(brand),
+                    "category":     "other",
+                })
+            break   # one brand per caption in fallback mode
+
+    return results
+
+
+# ── MAIN EXTRACTOR ────────────────────────────────────────────────────────────
 
 class ProductExtractor:
     """
-    Extracts product candidates from raw video captions.
+    Extracts product candidates from video captions using Claude AI.
+
+    Uses ALL scraped videos regardless of age. Older posts contribute
+    lower weight to trend scores but are never discarded — they form the
+    baseline that makes velocity calculation meaningful.
     """
 
+    BATCH_SIZE = 50   # captions per Claude call — smaller = less truncation risk
+
     def __init__(self):
-        # Compile brand patterns for fast matching
-        self.brand_pattern = re.compile(
-            r'\b(' + '|'.join(re.escape(b) for b in sorted(ALL_BRANDS, key=len, reverse=True)) + r')\b',
-            re.IGNORECASE
-        )
-        self.product_type_pattern = re.compile(
-            r'\b(' + '|'.join(re.escape(p) for p in sorted(PRODUCT_TYPES, key=len, reverse=True)) + r')\b',
-            re.IGNORECASE
-        )
+        self.today_str = date.today().isoformat()
 
-    def extract_from_caption(self, caption: str) -> list[tuple[str, str, str, float]]:
-        """
-        Extracts (brand, product_type, display_name, confidence) tuples from a caption.
-        Returns empty list if no product found.
-        """
-        caption_lower = caption.lower()
-        results = []
-
-        # Find brands mentioned
-        brands_found = self.brand_pattern.findall(caption)
-        brands_found = [b.lower() for b in brands_found]
-
-        # Find product types mentioned
-        types_found = self.product_type_pattern.findall(caption)
-        types_found = [t.lower() for t in types_found]
-
-        # Count strong/negative signals
-        strong_signals = sum(1 for p in STRONG_SIGNAL_PHRASES if p in caption_lower)
-        negative_signals = sum(1 for p in NEGATIVE_PHRASES if p in caption_lower)
-
-        # Base confidence from signal quality
-        base_confidence = 0.3
-        if strong_signals > 0: base_confidence += 0.2 * min(strong_signals, 3)
-        if negative_signals > 0: base_confidence -= 0.3
-
-        # Case 1: Brand + Product type (highest confidence)
-        if brands_found and types_found:
-            brand = brands_found[0]
-            ptype = types_found[0]
-            display = f"{_smart_title(brand)} {_smart_title(ptype)}"
-            key = self._normalize_key(display)
-            confidence = min(base_confidence + 0.4, 1.0)
-            results.append((brand, ptype, display, key, confidence))
-
-        # Case 2: Brand only (medium confidence — brand is specific enough)
-        elif brands_found and not types_found:
-            brand = brands_found[0]
-            # Only keep Tier 1 brands for brand-only extractions
-            if brand in BRANDS_TIER1:
-                display = _smart_title(brand)
-                key = self._normalize_key(display)
-                confidence = min(base_confidence + 0.2, 0.7)
-                results.append((brand, "product", display, key, confidence))
-
-        # Case 3: Ingredient-as-product (standalone ingredients that are also products)
-        # e.g., "snail mucin", "retinol" without a brand
-        elif not brands_found and types_found:
-            ptype = types_found[0]
-            # Only high-specificity product types qualify without a brand
-            high_specificity = [
-                "snail mucin", "led mask", "microcurrent device", "gua sha",
-                "jade roller", "retinol", "tretinoin", "adapalene",
-                "lash serum", "scalp serum",
-            ]
-            if ptype in high_specificity:
-                display = _smart_title(ptype)
-                key = self._normalize_key(display)
-                confidence = min(base_confidence + 0.1, 0.5)
-                results.append(("generic", ptype, display, key, confidence))
-
-        return results
-
-    def _normalize_key(self, text: str) -> str:
-        """Creates a consistent key for deduplication."""
-        return re.sub(r'[^a-z0-9]', '_', text.lower()).strip('_')
-
-    def _get_creator_tier(self, follower_count: int) -> str:
-        if follower_count >= 1_000_000: return "mega"
-        if follower_count >= 100_000:   return "macro"
-        if follower_count >= 10_000:    return "micro"
+    def _get_creator_tier(self, followers: int) -> str:
+        if followers >= 1_000_000: return "mega"
+        if followers >= 100_000:   return "macro"
+        if followers >= 10_000:    return "micro"
         return "nano"
 
+    def _normalize_key(self, brand: str, product: str) -> str:
+        combined = f"{brand} {product}".lower()
+        return re.sub(r"[^a-z0-9]", "_", combined).strip("_")
+
+    def _count_signals(self, caption: str) -> tuple[int, int]:
+        cl = caption.lower()
+        strong   = sum(1 for p in STRONG_SIGNAL_PHRASES if p in cl)
+        negative = sum(1 for p in NEGATIVE_PHRASES       if p in cl)
+        return strong, negative
+
     def _is_sponsored(self, caption: str) -> bool:
-        sponsored_tags = ["#ad", "#sponsored", "#gifted", "#partner", "#collab", "#paid"]
-        caption_lower = caption.lower()
-        return any(tag in caption_lower for tag in sponsored_tags)
+        tags = ["#ad", "#sponsored", "#gifted", "#partner", "#collab", "#paid"]
+        cl = caption.lower()
+        return any(t in cl for t in tags)
 
-    def _get_category(self, brand: str, product_type: str) -> str:
-        makeup_types = [
-            "foundation", "concealer", "blush", "bronzer", "highlighter",
-            "eyeshadow", "mascara", "liner", "lipstick", "lip gloss",
-            "primer", "setting spray", "setting powder", "contour"
-        ]
-        device_types = [
-            "led mask", "led device", "microcurrent device", "gua sha",
-            "jade roller", "facial roller", "pore vacuum"
-        ]
-        fragrance_types = ["perfume", "fragrance", "eau de parfum", "edp", "cologne"]
+    def extract_all(self, videos: list[VideoSignal]) -> dict[str, list[dict]]:
+        """
+        Runs Claude extraction across all captions in batches.
+        Returns dict mapping video index → list of extracted products.
+        """
+        captions = [v.caption for v in videos]
+        total    = len(captions)
+        all_extractions: dict[int, list[dict]] = defaultdict(list)
 
-        if product_type in makeup_types:          return "Makeup"
-        if product_type in device_types:          return "Skincare Device"
-        if product_type in fragrance_types:       return "Fragrance"
-        if "hair" in product_type:                return "Haircare"
-        if "body" in product_type:                return "Body Care"
-        return "Skincare"
+        use_claude = bool(os.getenv("ANTHROPIC_API_KEY"))
+        if not use_claude:
+            logger.warning("  No ANTHROPIC_API_KEY — using regex fallback (lower recall)")
+
+        logger.info(f"  Extracting products from {total} captions "
+                    f"({'Claude AI' if use_claude else 'regex fallback'})...")
+
+        for batch_start in range(0, total, self.BATCH_SIZE):
+            batch_end     = min(batch_start + self.BATCH_SIZE, total)
+            batch_caps    = captions[batch_start:batch_end]
+            batch_indices = list(range(batch_start, batch_end))
+
+            if use_claude:
+                try:
+                    results = _extract_batch_with_claude(batch_caps, batch_indices)
+                    for r in results:
+                        idx = r.get("caption_index", -1)
+                        if 0 <= idx < total:
+                            all_extractions[idx].append(r)
+                    if batch_start % (self.BATCH_SIZE * 5) == 0:
+                        pct = int(batch_end / total * 100)
+                        logger.info(f"    ...{pct}% ({batch_end}/{total} captions)")
+                except Exception as e:
+                    logger.warning(f"  Batch {batch_start}-{batch_end} failed: {e} — using fallback")
+                    for i, cap in enumerate(batch_caps):
+                        for r in _extract_regex_fallback(cap):
+                            all_extractions[batch_start + i].append(r)
+            else:
+                for i, cap in enumerate(batch_caps):
+                    for r in _extract_regex_fallback(cap):
+                        all_extractions[batch_start + i].append(r)
+
+        found = sum(1 for v in all_extractions.values() if v)
+        logger.info(f"  Products found in {found}/{total} captions")
+        return dict(all_extractions)
 
     def process_videos(self, videos: list[VideoSignal],
-                       min_creators: int = 5) -> list[ProductCandidate]:
+                       min_creators: int = 2) -> list[ProductCandidate]:
         """
-        Main processing function.
-        Takes a list of VideoSignal objects and returns
-        ProductCandidate objects that pass the velocity filter.
+        Main processing function. Uses ALL videos — no date cutoff.
 
-        min_creators: minimum unique creators to qualify as a trend candidate
+        Recency weighting:
+          - Last 7 days:  full weight (1.0)
+          - 8-14 days:    0.7
+          - 15-21 days:   0.5
+          - 22-30 days:   0.3
+          - 30+ days:     0.1
+
+        min_creators: minimum weighted unique creators to qualify.
+        A product with 3 creators from this week scores the same as
+        one with ~4-5 creators from 2 weeks ago.
         """
-        # Accumulate signals per product key
+        logger.info(f"\n  Processing {len(videos)} videos (ALL dates, recency-weighted)...")
+
+        # Step 1: Extract products from all captions
+        extractions = self.extract_all(videos)
+
+        # Step 2: Aggregate into ProductCandidate objects
         candidates: dict[str, ProductCandidate] = {}
 
-        for video in videos:
-            extractions = self.extract_from_caption(video.caption)
-            is_sponsored = self._is_sponsored(video.caption)
+        for video_idx, video in enumerate(videos):
+            products_in_caption = extractions.get(video_idx, [])
+            if not products_in_caption:
+                continue
 
-            # Count strong/negative signals
-            caption_lower = video.caption.lower()
-            strong = sum(1 for p in STRONG_SIGNAL_PHRASES if p in caption_lower)
-            negative = sum(1 for p in NEGATIVE_PHRASES if p in caption_lower)
+            strong, negative = self._count_signals(video.caption)
+            is_sponsored     = self._is_sponsored(video.caption)
+            weight           = _recency_weight(video.posted_date, self.today_str)
+            tier             = self._get_creator_tier(video.follower_count)
 
-            for brand, ptype, display, key, confidence in extractions:
+            for prod in products_in_caption:
+                brand        = str(prod.get("brand", "")).strip()
+                product_name = str(prod.get("product_name", "")).strip()
+                category     = str(prod.get("category", "other")).strip()
+
+                if not brand or not product_name:
+                    continue
+
+                # Normalize to a consistent key
+                key = self._normalize_key(brand, product_name)
+
                 if key not in candidates:
-                    # Classify into taxonomy
-                    type_id    = taxonomy.classify(brand, ptype, video.caption)
-                    type_label = taxonomy.get_label(type_id)
-                    type_emoji = taxonomy.get_emoji(type_id)
+                    display = _smart_title(f"{brand} {product_name}".strip())
+
+                    # Classify into our taxonomy
+                    try:
+                        type_id    = taxonomy.classify(brand.lower(), category, video.caption)
+                        type_label = taxonomy.get_label(type_id)
+                        type_emoji = taxonomy.get_emoji(type_id)
+                    except Exception:
+                        type_id, type_label, type_emoji = category, _smart_title(category), "✨"
+
+                    google_kw = f"{brand} {product_name}".strip()
 
                     candidates[key] = ProductCandidate(
-                        product_key      = key,
-                        display_name     = display,
-                        brand            = brand,
-                        product_type     = ptype,
-                        category         = self._get_category(brand, ptype),
-                        google_keyword   = f"{brand} {ptype}".strip() if brand != "generic" else ptype,
-                        product_type_id  = type_id,
+                        product_key        = key,
+                        display_name       = display,
+                        brand              = brand.lower(),
+                        product_type       = category,
+                        category           = "Skincare",
+                        google_keyword     = google_kw,
+                        product_type_id    = type_id,
                         product_type_label = type_label,
                         product_type_emoji = type_emoji,
                     )
 
                 c = candidates[key]
-                c.total_video_count += 1
-                c.total_likes    += video.like_count
-                c.total_comments += video.comment_count
-                c.total_shares   += video.share_count
-                c.strong_signal_count   += strong
+                c.total_video_count    += 1
+                c.total_likes          += video.like_count
+                c.total_comments       += video.comment_count
+                c.total_shares         += video.share_count
+                c.strong_signal_count  += strong
                 c.negative_signal_count += negative
 
                 if is_sponsored:
@@ -411,19 +501,17 @@ class ProductExtractor:
                 else:
                     c.organic_count += 1
 
-                # Only count unique creators
+                # Unique creator tracking (raw count + recency-weighted score)
                 if video.creator_id not in c.creator_ids:
                     c.creator_ids.add(video.creator_id)
-                    c.unique_creator_count += 1
+                    c.unique_creator_count    += 1
+                    c.weighted_creator_score  += weight   # recent = higher score
 
-                    # Creator tier
-                    tier = self._get_creator_tier(video.follower_count)
                     if tier == "mega":    c.mega_creators  += 1
                     elif tier == "macro": c.macro_creators += 1
                     elif tier == "micro": c.micro_creators += 1
                     else:                 c.nano_creators  += 1
 
-                    # Store post for attribution (keep top 10 by follower count)
                     if video.creator_handle:
                         c.top_creator_posts.append({
                             "handle":       video.creator_handle,
@@ -434,26 +522,30 @@ class ProductExtractor:
                             "caption":      video.caption[:200],
                             "is_sponsored": video.is_sponsored,
                             "tier":         tier,
+                            "weight":       weight,
                         })
-                        # Keep only top 10 by follower count to save memory
                         if len(c.top_creator_posts) > 10:
                             c.top_creator_posts.sort(
-                                key=lambda p: p["followers"], reverse=True
+                                key=lambda p: (p["weight"], p["followers"]),
+                                reverse=True
                             )
                             c.top_creator_posts = c.top_creator_posts[:10]
 
-                # Update confidence
-                c.confidence = max(c.confidence, confidence)
+                c.confidence = max(c.confidence, 0.5 + (weight * 0.5))
 
-        # Apply velocity filter: minimum unique creators
+        # Step 3: Velocity filter using weighted score
         qualified = [
             c for c in candidates.values()
-            if c.unique_creator_count >= min_creators
+            if c.weighted_creator_score >= min_creators
             and c.product_key not in EXCLUSIONS
-            and c.negative_signal_count < c.strong_signal_count  # More positive than negative
         ]
 
-        # Sort by creator count descending
-        qualified.sort(key=lambda x: x.unique_creator_count, reverse=True)
+        # Sort by weighted score (recency-boosted) then raw creator count
+        qualified.sort(
+            key=lambda x: (x.weighted_creator_score, x.unique_creator_count),
+            reverse=True
+        )
 
+        logger.info(f"  Qualified candidates: {len(qualified)} "
+                    f"(weighted score ≥ {min_creators})")
         return qualified
